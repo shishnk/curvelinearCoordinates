@@ -32,7 +32,7 @@ public class Vector<T> : IEnumerable<T> where T : INumber<T>
 
         for (int i = 0; i < vector.Length; i++)
         {
-            result[i] = vector[i] * T.Create(constant);
+            result[i] = vector[i] * T.CreateChecked(constant);
         }
 
         return result;

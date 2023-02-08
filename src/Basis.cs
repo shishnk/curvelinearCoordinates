@@ -31,7 +31,7 @@ public readonly record struct QuadraticBasis : IBasis
     public double GetDPsi(int number, int varNumber, Point2D point)
         => varNumber switch
         {
-            1 => number switch
+            0 => number switch
             {
                 0 => 4.0 * (point.X - 1.0 + (point.X - 0.5)) * (point.Y - 0.5) * (point.Y - 0.5),
                 1 => -8.0 * (point.X - 1.0 + point.X) * (point.Y - 0.5) * (point.Y - 1.0),
@@ -44,7 +44,7 @@ public readonly record struct QuadraticBasis : IBasis
                 8 => 4.0 * (point.X - 0.5 + point.X) * point.Y * (point.Y - 0.5),
                 _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected function number!")
             },
-            2 => number switch
+            1 => number switch
             {
                 0 => 4.0 * (point.X - 0.5) * (point.X - 1.0) * (point.Y - 1.0 + (point.Y - 0.5)),
                 1 => -8.0 * point.X * (point.X - 1.0) * (point.Y - 1.0 + (point.Y - 0.5)),

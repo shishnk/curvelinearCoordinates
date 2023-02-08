@@ -265,19 +265,19 @@ public class LOSLU : IterativeSolver
 
             _solution = new(_vector.Length);
 
-            double[] gglnew = new double[_matrix.Ggl.Length];
-            double[] ggunew = new double[_matrix.Ggu.Length];
+            double[] gglnew = new double[_matrix.GGl.Length];
+            double[] ggunew = new double[_matrix.GGu.Length];
             double[] dinew = new double[_matrix.Di.Length];
 
-            _matrix.Ggl.Copy(gglnew);
-            _matrix.Ggu.Copy(ggunew);
+            _matrix.GGl.Copy(gglnew);
+            _matrix.GGu.Copy(ggunew);
             _matrix.Di.Copy(dinew);
 
             Stopwatch sw = Stopwatch.StartNew();
 
             LU(gglnew, ggunew, dinew);
 
-            var r = Direct(_vector - (_matrix * _solution), gglnew, dinew);
+            var r = Direct(_vector - _matrix * _solution, gglnew, dinew);
             var z = Reverse(r, ggunew);
             var p = Direct(_matrix * z, gglnew, dinew);
 
@@ -334,12 +334,12 @@ public class BCGSTABLU : IterativeSolver
 
             _solution = new(_vector.Length);
 
-            double[] gglnew = new double[_matrix.Ggl.Length];
-            double[] ggunew = new double[_matrix.Ggu.Length];
+            double[] gglnew = new double[_matrix.GGl.Length];
+            double[] ggunew = new double[_matrix.GGu.Length];
             double[] dinew = new double[_matrix.Di.Length];
 
-            _matrix.Ggl.Copy(gglnew);
-            _matrix.Ggu.Copy(ggunew);
+            _matrix.GGl.Copy(gglnew);
+            _matrix.GGu.Copy(ggunew);
             _matrix.Di.Copy(dinew);
 
             Vector<double> r0 = new(_vector.Length);
@@ -456,10 +456,10 @@ public class CGMCholesky : IterativeSolver
 
             _solution = new(_vector.Length);
 
-            double[] ggnew = new double[_matrix.Ggu.Length];
+            double[] ggnew = new double[_matrix.GGu.Length];
             double[] dinew = new double[_matrix.Di.Length];
 
-            _matrix.Ggu.Copy(ggnew);
+            _matrix.GGu.Copy(ggnew);
             _matrix.Di.Copy(dinew);
 
             Stopwatch sw = Stopwatch.StartNew();

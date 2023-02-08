@@ -26,6 +26,13 @@
         <None Update="input\meshParameters.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
+        <None Update="input\DirichletBoundaries.json">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="bin\Debug\net7.0\matrix.txt" />
     </ItemGroup>
 
 </Project>
