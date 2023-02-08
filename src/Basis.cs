@@ -20,7 +20,7 @@ public readonly record struct QuadraticBasis : IBasis
             1 => -8.0 * point.X * (point.X - 1.0) * (point.Y - 0.5) * (point.Y - 1.0),
             2 => 4.0 * point.X * (point.X - 0.5) * (point.Y - 0.5) * (point.Y - 1.0),
             3 => -8.0 * (point.X - 0.5) * (point.X - 1.0) * point.Y * (point.Y - 1.0),
-            4 => -16.0 * point.X * point.Y * (point.X - 1.0) * (point.Y - 1.0),
+            4 => 16.0 * point.X * point.Y * (point.X - 1.0) * (point.Y - 1.0),
             5 => -8.0 * point.X * point.Y * (point.X - 0.5) * (point.Y - 1.0),
             6 => 4.0 * point.Y * (point.X - 0.5) * (point.X - 1.0) * (point.Y - 0.5),
             7 => -8.0 * point.X * point.Y * (point.X - 1.0) * (point.Y - 0.5),

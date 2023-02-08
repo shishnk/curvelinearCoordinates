@@ -51,7 +51,7 @@ public class SolverFem
     private Integration _integrator = default!;
     private IterativeSolver _iterativeSolver = default!;
     private DirichletBoundary[] _dirichletBoundaries = default!;
-    private Matrix? _baseStiffnessMatrix = default!;
+    private Matrix? _baseStiffnessMatrix;
     private Matrix _baseMassMatrix = default!;
     private Matrix _stiffnessMatrix = default!;
     private Matrix _massMatrix = default!;
@@ -64,17 +64,17 @@ public class SolverFem
     {
         Initialize();
         AssemblySystem();
-        _globalMatrix.PrintDense("matrix.txt");
+        // _globalMatrix.PrintDense("matrix.txt");
         AccountingDirichletBoundary();
 
-        // _iterativeSolver.SetMatrix(_globalMatrix);
-        // _iterativeSolver.SetVector(_globalVector);
-        // _iterativeSolver.Compute();
-        //
-        // foreach (var value in _iterativeSolver.Solution!)
-        // {
-        //     Console.WriteLine(value);
-        // }
+        _iterativeSolver.SetMatrix(_globalMatrix);
+        _iterativeSolver.SetVector(_globalVector);
+        _iterativeSolver.Compute();
+        
+        foreach (var value in _iterativeSolver.Solution!)
+        {
+            Console.WriteLine(value);
+        }
     }
 
     private void Initialize()
@@ -108,7 +108,7 @@ public class SolverFem
 
                 for (int j = 0; j < _basis.Size; j++)
                 {
-                    FillGlobalMatrix(element[i], element[j], _stiffnessMatrix[i, j]);
+                    FillGlobalMatrix(element[i], element[j], _stiffnessMatrix[i, j] + _massMatrix[i, j]);
                 }
             }
         }
