@@ -25,7 +25,7 @@ public readonly record struct QuadraticBasis : IBasis
             6 => 4.0 * point.Y * (point.X - 0.5) * (point.X - 1.0) * (point.Y - 0.5),
             7 => -8.0 * point.X * point.Y * (point.X - 1.0) * (point.Y - 0.5),
             8 => 4.0 * point.X * point.Y * (point.X - 0.5) * (point.Y - 0.5),
-            _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected number function!")
+            _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected function number!")
         };
 
     public double GetDPsi(int number, int varNumber, Point2D point)
@@ -42,7 +42,7 @@ public readonly record struct QuadraticBasis : IBasis
                 6 => 4.0 * (point.X - 1.0 + (point.X - 0.5)) * point.Y * (point.Y - 0.5),
                 7 => -8.0 * (point.X - 1.0 + point.X) * point.Y * (point.Y - 0.5),
                 8 => 4.0 * (point.X - 0.5 + point.X) * point.Y * (point.Y - 0.5),
-                _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected number function!")
+                _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected function number!")
             },
             2 => number switch
             {
@@ -55,7 +55,7 @@ public readonly record struct QuadraticBasis : IBasis
                 6 => 4.0 * (point.X - 0.5) * (point.X - 1.0) * (point.Y - 0.5 + point.Y),
                 7 => -8.0 * point.X * (point.X - 1.0) * (point.Y - 0.5 + point.Y),
                 8 => 4.0 * point.X * (point.X - 0.5) * (point.Y - 0.5 + point.Y),
-                _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected number function!")
+                _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected function number!")
             },
             _ => throw new ArgumentOutOfRangeException(nameof(varNumber), varNumber, "Not expected var number!")
         };

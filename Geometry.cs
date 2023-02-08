@@ -20,3 +20,19 @@ public readonly record struct Interval(
     [JsonIgnore] public double Center => (LeftBorder + RightBorder) / 2.0;
     [JsonIgnore] public double Length => Math.Abs(RightBorder - LeftBorder);
 }
+
+public readonly record struct Rectangle
+{
+    public Point2D LeftBottom { get; }
+    public Point2D LeftTop { get; }
+    public Point2D RightTop { get; }
+    public Point2D RightBottom { get; }
+
+    public Rectangle(Point2D leftBottom, Point2D rightTop)
+    {
+        LeftBottom = leftBottom;
+        RightTop = rightTop;
+        LeftTop = new(leftBottom.X, rightTop.Y);
+        RightBottom = new(rightTop.X, leftBottom.Y);
+    }
+}

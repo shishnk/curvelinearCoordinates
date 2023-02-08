@@ -10,11 +10,22 @@
     <ItemGroup>
         <Using Include="Project" />
         <Using Include="Project.Meshes" />
+        <Using Include="Project.Tests" />
         <Using Include="Newtonsoft.Json" />
+        <Using Include="System.Collections" />
+        <Using Include="System.Collections.Immutable" />
+        <Using Include="System.Numerics" />
+        <Using Include="System.Diagnostics" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.3-beta1" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3-beta1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="input\meshParameters.json">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>
