@@ -64,17 +64,31 @@ public class SolverFem
     {
         Initialize();
         AssemblySystem();
-        // _globalMatrix.PrintDense("matrix.txt");
         AccountingDirichletBoundary();
+
+        // _globalMatrix.PrintDense("matrix.txt");
 
         _iterativeSolver.SetMatrix(_globalMatrix);
         _iterativeSolver.SetVector(_globalVector);
         _iterativeSolver.Compute();
-        
-        foreach (var value in _iterativeSolver.Solution!)
+
+        var exact = new double[_mesh.Points.Count];
+
+        for (int i = 0; i < exact.Length; i++)
         {
-            Console.WriteLine(value);
+            exact[i] = _test.U(_mesh.Points[i]);
         }
+
+        var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v1, v2));
+
+        foreach (var (v1, v2) in result)
+        {
+            Console.WriteLine($"{v1} ------------ {v2} ");
+        }
+
+        Console.WriteLine("---------------------------");
+
+        CalculateError();
     }
 
     private void Initialize()
@@ -276,6 +290,18 @@ public class SolverFem
                 }
             }
         }
+    }
+
+    private void CalculateError()
+    {
+        var error = new double[_mesh.Points.Count];
+
+        for (int i = 0; i < error.Length; i++)
+        {
+            error[i] = Math.Abs(_iterativeSolver.Solution!.Value[i] - _test.U(_mesh.Points[i]));
+        }
+
+        Array.ForEach(error, Console.WriteLine);
     }
 
     public static SolverFemBuilder CreateBuilder() => new();

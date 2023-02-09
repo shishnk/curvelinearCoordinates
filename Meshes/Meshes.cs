@@ -65,7 +65,7 @@ public abstract class MeshBuilder
                 result.Elements[index][0] = i + j * nx;
                 result.Elements[index][1] = i + 1 + j * nx;
                 result.Elements[index][2] = i + (j + 1) * nx;
-                result.Elements[index][3] = i + 1 + (j + 1) * nx;
+                result.Elements[index++][3] = i + 1 + (j + 1) * nx;
             }
         }
 
@@ -92,6 +92,9 @@ public class MeshQuadraticBuilder : MeshBuilder
         var pointsY = new double[2 * meshParameters.SplitsY + 1];
         var vertices = new Point2D[9];
 
+        pointsX.Fill(int.MinValue);
+        pointsY.Fill(int.MinValue);
+
         foreach (var ielem in result.Elements)
         {
             var v1 = result.Points[ielem[0]];
@@ -109,9 +112,9 @@ public class MeshQuadraticBuilder : MeshBuilder
         pointsY = pointsY.OrderBy(v => v).Distinct().ToArray();
         result.Points.Clear();
 
-        foreach (var pointX in pointsX)
+        foreach (var pointY in pointsY.Skip(1))
         {
-            foreach (var pointY in pointsY)
+            foreach (var pointX in pointsX.Skip(1))
             {
                 result.Points.Add(new(pointX, pointY));
             }
