@@ -24,9 +24,9 @@ public class SolverFem
             return this;
         }
 
-        public SolverFemBuilder SetDirichletBoundaries(DirichletBoundary[] boundaries)
+        public SolverFemBuilder SetBoundaries(IEnumerable<IBoundary> boundaries)
         {
-            _solverFem._dirichletBoundaries = boundaries;
+            _solverFem._boundaries = boundaries.DistinctBy(b => b.Node);
             return this;
         }
 
@@ -50,7 +50,7 @@ public class SolverFem
     private ITest _test = default!;
     private Integration _integrator = default!;
     private IterativeSolver _iterativeSolver = default!;
-    private DirichletBoundary[] _dirichletBoundaries = default!;
+    private IEnumerable<IBoundary> _boundaries = default!;
     private Matrix[]? _baseStiffnessMatrix;
     private Matrix _baseMassMatrix = default!;
     private Matrix _stiffnessMatrix = default!;
@@ -62,7 +62,7 @@ public class SolverFem
 
     public void Compute()
     {
-        Initialize();
+         Initialize();
         AssemblySystem();
         AccountingDirichletBoundary();
 
@@ -231,32 +231,24 @@ public class SolverFem
 
     private void AccountingDirichletBoundary()
     {
-        (int Node, double Value)[] boundaries = new (int, double)[3 * _dirichletBoundaries.Length];
         int[] checkBc = new int[_mesh.Points.Count];
 
-        int index = 0;
-
-        foreach (var (ielem, edge) in _dirichletBoundaries)
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                boundaries[index++] = (_mesh.Edges[ielem][edge][j],
-                    _test.U(_mesh.Points[_mesh.Edges[ielem][edge][j]]));
-            }
-        }
-
-        boundaries = boundaries.Distinct().OrderBy(boundary => boundary.Node).ToArray();
         checkBc.Fill(-1);
+        var arrayBoundaries = _boundaries.ToArray();
 
-        for (int i = 0; i < boundaries.Length; i++)
-            checkBc[boundaries[i].Node] = i;
+        for (int i = 0; i < arrayBoundaries.Length; i++)
+        {
+            arrayBoundaries[i].Value = _test.U(_mesh.Points[arrayBoundaries[i].Node]);
+            checkBc[arrayBoundaries[i].Node] = i;
+        }
 
         for (int i = 0; i < _mesh.Points.Count; i++)
         {
+            int index;
             if (checkBc[i] != -1)
             {
                 _globalMatrix.Di[i] = 1.0;
-                _globalVector[i] = boundaries[checkBc[i]].Value;
+                _globalVector[i] = arrayBoundaries[checkBc[i]].Value;
 
                 for (int k = _globalMatrix.Ig[i]; k < _globalMatrix.Ig[i + 1]; k++)
                 {

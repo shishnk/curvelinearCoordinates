@@ -15,17 +15,15 @@ public class RegularMeshCreator : IMeshCreator
 
 public abstract class MeshBuilder
 {
-    public abstract (List<Point2D>, int[][], int[][][]) Build(MeshParameters meshParameters);
+    public abstract (List<Point2D>, int[][]) Build(MeshParameters meshParameters);
 
-    protected static (List<Point2D>, int[][], int[][][]) BaseBuild(MeshParameters meshParameters, int sizeElement)
+    protected static (List<Point2D>, int[][]) BaseBuild(MeshParameters meshParameters, int sizeElement)
     {
         var result = new
         {
             Points = new List<Point2D>(),
             Elements = new int[meshParameters.SplitsX * meshParameters.SplitsY][].Select(_ => new int[sizeElement])
                 .ToArray(),
-            Edges = new int[meshParameters.SplitsX * meshParameters.SplitsY]
-                .Select(_ => new int[4].ToArray().Select(_ => new int[3]).ToArray()).ToArray() // TODO for linear
         };
 
         double hx = meshParameters.IntervalX.Length / meshParameters.SplitsX;
@@ -69,25 +67,25 @@ public abstract class MeshBuilder
             }
         }
 
-        return (result.Points, result.Elements, result.Edges);
+        return (result.Points, result.Elements);
     }
 }
 
 public class MeshLinearBuilder : MeshBuilder
 {
-    public override (List<Point2D>, int[][], int[][][]) Build(MeshParameters meshParameters)
+    public override (List<Point2D>, int[][]) Build(MeshParameters meshParameters)
     {
         var result = BaseBuild(meshParameters, 4);
 
-        return (result.Item1, result.Item2, result.Item3);
+        return (result.Item1, result.Item2);
     }
 }
 
 public class MeshQuadraticBuilder : MeshBuilder
 {
-    public override (List<Point2D>, int[][], int[][][]) Build(MeshParameters meshParameters)
+    public override (List<Point2D>, int[][]) Build(MeshParameters meshParameters)
     {
-        (List<Point2D> Points, int[][] Elements, int[][][] Edges) result = BaseBuild(meshParameters, 9);
+        (List<Point2D> Points, int[][] Elements) result = BaseBuild(meshParameters, 9);
         var pointsX = new double[2 * meshParameters.SplitsX + 1];
         var pointsY = new double[2 * meshParameters.SplitsY + 1];
         var vertices = new Point2D[9];
@@ -135,27 +133,11 @@ public class MeshQuadraticBuilder : MeshBuilder
                 result.Elements[index][5] = i + nx + 2 + 2 * j * nx + i;
                 result.Elements[index][6] = i + 2 * nx + 2 * j * nx + i;
                 result.Elements[index][7] = i + 2 * nx + 1 + 2 * j * nx + i;
-                result.Elements[index][8] = i + 2 * nx + 2 + 2 * j * nx + i;
-
-                result.Edges[index][0][0] = result.Elements[index][0];
-                result.Edges[index][0][1] = result.Elements[index][1];
-                result.Edges[index][0][2] = result.Elements[index][2];
-
-                result.Edges[index][1][0] = result.Elements[index][2];
-                result.Edges[index][1][1] = result.Elements[index][5];
-                result.Edges[index][1][2] = result.Elements[index][8];
-
-                result.Edges[index][2][0] = result.Elements[index][6];
-                result.Edges[index][2][1] = result.Elements[index][7];
-                result.Edges[index][2][2] = result.Elements[index][8];
-
-                result.Edges[index][3][0] = result.Elements[index][0];
-                result.Edges[index][3][1] = result.Elements[index][3];
-                result.Edges[index][3][2] = result.Elements[index++][6];
+                result.Elements[index++][8] = i + 2 * nx + 2 + 2 * j * nx + i;
             }
         }
 
-        return (result.Points, result.Elements, result.Edges);
+        return (result.Points, result.Elements);
 
         void RecalculatePoints(Point2D v1, Point2D v2, Point2D v3, Point2D v4)
         {
@@ -190,18 +172,15 @@ public interface IBaseMesh
 {
     IReadOnlyList<Point2D> Points { get; }
     IReadOnlyList<IReadOnlyList<int>> Elements { get; }
-    IReadOnlyList<IReadOnlyList<IReadOnlyList<int>>> Edges { get; }
 }
 
 public class RegularMesh : IBaseMesh
 {
     private readonly List<Point2D> _points;
     private readonly int[][] _elements;
-    private readonly int[][][] _edges;
 
     public IReadOnlyList<Point2D> Points => _points;
     public IReadOnlyList<IReadOnlyList<int>> Elements => _elements;
-    public IReadOnlyList<IReadOnlyList<IReadOnlyList<int>>> Edges => _edges;
 
     public RegularMesh(MeshParameters meshParameters, MeshBuilder meshBuilder)
     {
@@ -210,6 +189,6 @@ public class RegularMesh : IBaseMesh
             throw new("The number of splits must be greater than or equal to 1");
         }
 
-        (_points, _elements, _edges) = meshBuilder.Build(meshParameters);
+        (_points, _elements) = meshBuilder.Build(meshParameters);
     }
 }

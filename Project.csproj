@@ -26,7 +26,7 @@
         <None Update="input\meshParameters.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
-        <None Update="input\DirichletBoundaries.json">
+        <None Update="input\boundaryParameters.json">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <None Remove="bin\**" />
