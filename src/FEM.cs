@@ -66,7 +66,7 @@ public class SolverFem
         AssemblySystem();
         AccountingDirichletBoundary();
 
-        // _globalMatrix.PrintDense("matrix.txt");
+        _globalMatrix.PrintDense("matrix.txt");
 
         _iterativeSolver.SetMatrix(_globalMatrix);
         _iterativeSolver.SetVector(_globalVector);
@@ -122,7 +122,7 @@ public class SolverFem
 
                 for (int j = 0; j < _basis.Size; j++)
                 {
-                    FillGlobalMatrix(element[i], element[j], _stiffnessMatrix[i, j] + _massMatrix[i, j]);
+                    FillGlobalMatrix(element[i], element[j], _stiffnessMatrix[i, j]);
                 }
             }
         }
@@ -133,7 +133,7 @@ public class SolverFem
         var element = _mesh.Elements[ielem];
 
         var bPoint = _mesh.Points[element[0]];
-        var ePoint = _mesh.Points[element[_basis.Size - 1]];
+        var ePoint = _mesh.Points[element[^1]];
 
         double hx = ePoint.X - bPoint.X;
         double hy = ePoint.Y - bPoint.Y;
@@ -181,7 +181,7 @@ public class SolverFem
         {
             for (int j = 0; j <= i; j++)
             {
-                _stiffnessMatrix[i, j] = _stiffnessMatrix[j, i] = hy / hx * _baseStiffnessMatrix[i, j];
+                _stiffnessMatrix[i, j] = _stiffnessMatrix[j, i] = 1.0 / (hx * hy) * _baseStiffnessMatrix[i, j];
             }
         }
 
@@ -215,23 +215,12 @@ public class SolverFem
             return;
         }
 
-        if (i < j)
+        if (i <= j) return;
+        for (int ind = _globalMatrix.Ig[i]; ind < _globalMatrix.Ig[i + 1]; ind++)
         {
-            for (int ind = _globalMatrix.Ig[j]; ind < _globalMatrix.Ig[j + 1]; ind++)
-            {
-                if (_globalMatrix.Jg[ind] != i) continue;
-                _globalMatrix.GGu[ind] += value;
-                return;
-            }
-        }
-        else
-        {
-            for (int ind = _globalMatrix.Ig[i]; ind < _globalMatrix.Ig[i + 1]; ind++)
-            {
-                if (_globalMatrix.Jg[ind] != j) continue;
-                _globalMatrix.GGl[ind] += value;
-                return;
-            }
+            if (_globalMatrix.Jg[ind] != j) continue;
+            _globalMatrix.Gg[ind] += value;
+            return;
         }
     }
 
@@ -261,7 +250,7 @@ public class SolverFem
         {
             if (checkBc[i] != -1)
             {
-                _globalMatrix.Di[i] = 1;
+                _globalMatrix.Di[i] = 1.0;
                 _globalVector[i] = boundaries[checkBc[i]].Value;
 
                 for (int k = _globalMatrix.Ig[i]; k < _globalMatrix.Ig[i + 1]; k++)
@@ -270,11 +259,10 @@ public class SolverFem
 
                     if (checkBc[index] == -1)
                     {
-                        _globalVector[index] -= _globalMatrix.GGl[k] * _globalVector[i];
+                        _globalVector[index] -= _globalMatrix.Gg[k] * _globalVector[i];
                     }
 
-                    _globalMatrix.GGl[k] = 0.0;
-                    _globalMatrix.GGu[k] = 0.0;
+                    _globalMatrix.Gg[k] = 0.0;
                 }
             }
             else
@@ -284,9 +272,8 @@ public class SolverFem
                     index = _globalMatrix.Jg[k];
 
                     if (checkBc[index] == -1) continue;
-                    _globalVector[i] -= _globalMatrix.GGu[k] * _globalVector[index];
-                    _globalMatrix.GGu[k] = 0.0;
-                    _globalMatrix.GGl[k] = 0.0;
+                    _globalVector[i] -= _globalMatrix.Gg[k] * _globalVector[index];
+                    _globalMatrix.Gg[k] = 0.0;
                 }
             }
         }

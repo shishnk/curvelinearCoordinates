@@ -7,7 +7,7 @@ SolverFem problem = SolverFem.CreateBuilder()
     .SetIntegrator(new(Quadratures.SegmentGaussOrder5()))
     .SetMesh(mesh)
     .SetTest(new Test1())
-    .SetSolverSlae(new LOSLU(1000, 1E-13))
+    .SetSolverSlae(new CGMCholesky(1000, 1E-13))
     .SetDirichletBoundaries(boundaries);
 
 problem.Compute();

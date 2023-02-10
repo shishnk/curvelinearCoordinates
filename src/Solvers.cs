@@ -102,289 +102,6 @@ public abstract class IterativeSolver
 
         return x;
     }
-
-    protected Vector<double> Direct(Vector<double> vector, double[] gglnew, double[] dinew)
-    {
-        Vector<double> y = new(vector.Length);
-        Vector<double>.Copy(vector, y);
-
-        double sum = 0.0;
-
-        for (int i = 0; i < _matrix.Size; i++)
-        {
-            int i0 = _matrix.Ig[i];
-            int i1 = _matrix.Ig[i + 1];
-
-            for (int k = i0; k < i1; k++)
-                sum += gglnew[k] * y[_matrix.Jg[k]];
-
-            y[i] = (y[i] - sum) / dinew[i];
-            sum = 0.0;
-        }
-
-        return y;
-    }
-
-    protected Vector<double> Reverse(Vector<double> vector, double[] ggunew)
-    {
-        Vector<double> result = new(vector.Length);
-        Vector<double>.Copy(vector, result);
-
-        for (int i = _matrix.Size - 1; i >= 0; i--)
-        {
-            int i0 = _matrix.Ig[i];
-            int i1 = _matrix.Ig[i + 1];
-
-            for (int k = i0; k < i1; k++)
-                result[_matrix.Jg[k]] -= ggunew[k] * result[i];
-        }
-
-        return result;
-    }
-
-    protected void LU(double[] gglnew, double[] ggunew, double[] dinew)
-    {
-        double suml = 0.0;
-        double sumu = 0.0;
-        double sumdi = 0.0;
-
-        for (int i = 0; i < _matrix.Size; i++)
-        {
-            int i0 = _matrix.Ig[i];
-            int i1 = _matrix.Ig[i + 1];
-
-            for (int k = i0; k < i1; k++)
-            {
-                int j = _matrix.Jg[k];
-                int j0 = _matrix.Ig[j];
-                int j1 = _matrix.Ig[j + 1];
-                int ik = i0;
-                int kj = j0;
-
-                while (ik < k && kj < j1)
-                {
-                    if (_matrix.Jg[ik] == _matrix.Jg[kj])
-                    {
-                        suml += gglnew[ik] * ggunew[kj];
-                        sumu += ggunew[ik] * gglnew[kj];
-                        ik++;
-                        kj++;
-                    }
-                    else if (_matrix.Jg[ik] > _matrix.Jg[kj])
-                    {
-                        kj++;
-                    }
-                    else
-                    {
-                        ik++;
-                    }
-                }
-
-                gglnew[k] -= suml;
-                ggunew[k] = (ggunew[k] - sumu) / dinew[j];
-                sumdi += gglnew[k] * ggunew[k];
-                suml = 0.0;
-                sumu = 0.0;
-            }
-
-            dinew[i] -= sumdi;
-            sumdi = 0.0;
-        }
-    }
-}
-
-public class LOS : IterativeSolver
-{
-    public LOS(int maxIters, double eps) : base(maxIters, eps)
-    {
-    }
-
-    public override void Compute()
-    {
-        try
-        {
-            ArgumentNullException.ThrowIfNull(_matrix, $"{nameof(_matrix)} cannot be null, set the matrix");
-            ArgumentNullException.ThrowIfNull(_vector, $"{nameof(_vector)} cannot be null, set the vector");
-
-            _solution = new(_vector.Length);
-
-            Vector<double> z = new(_vector.Length);
-
-            Stopwatch sw = Stopwatch.StartNew();
-
-            var r = _vector - (_matrix * _solution);
-
-            Vector<double>.Copy(r, z);
-
-            var p = _matrix * z;
-
-            var squareNorm = r * r;
-
-            for (int index = 0; index < MaxIters && squareNorm > Eps; index++)
-            {
-                var alpha = p * r / (p * p);
-                _solution += alpha * z;
-                squareNorm = (r * r) - (alpha * alpha * (p * p));
-                r -= alpha * p;
-
-                var tmp = _matrix * r;
-
-                var beta = -(p * tmp) / (p * p);
-                z = r + (beta * z);
-                p = tmp + (beta * p);
-            }
-
-            sw.Stop();
-
-            _runningTime = sw.Elapsed;
-        }
-        catch (ArgumentNullException ex)
-        {
-            Console.WriteLine($"We had problem: {ex.Message}");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"We had problem: {ex.Message}");
-        }
-    }
-}
-
-public class LOSLU : IterativeSolver
-{
-    public LOSLU(int maxIters, double eps) : base(maxIters, eps)
-    {
-    }
-
-    public override void Compute()
-    {
-        try
-        {
-            ArgumentNullException.ThrowIfNull(_matrix, $"{nameof(_matrix)} cannot be null, set the matrix");
-            ArgumentNullException.ThrowIfNull(_vector, $"{nameof(_vector)} cannot be null, set the vector");
-
-            _solution = new(_vector.Length);
-
-            double[] gglnew = new double[_matrix.GGl.Length];
-            double[] ggunew = new double[_matrix.GGu.Length];
-            double[] dinew = new double[_matrix.Di.Length];
-
-            _matrix.GGl.Copy(gglnew);
-            _matrix.GGu.Copy(ggunew);
-            _matrix.Di.Copy(dinew);
-
-            Stopwatch sw = Stopwatch.StartNew();
-
-            LU(gglnew, ggunew, dinew);
-
-            var r = Direct(_vector - _matrix * _solution, gglnew, dinew);
-            var z = Reverse(r, ggunew);
-            var p = Direct(_matrix * z, gglnew, dinew);
-
-            var squareNorm = r * r;
-
-            for (int iter = 0; iter < MaxIters && squareNorm > Eps; iter++)
-            {
-                var alpha = p * r / (p * p);
-                squareNorm = (r * r) - (alpha * alpha * (p * p));
-                _solution += alpha * z;
-                r -= alpha * p;
-
-                var tmp = Direct(_matrix * Reverse(r, ggunew), gglnew, dinew);
-
-                var beta = -(p * tmp) / (p * p);
-                z = Reverse(r, ggunew) + (beta * z);
-                p = tmp + (beta * p);
-            }
-
-            sw.Stop();
-
-            _runningTime = sw.Elapsed;
-        }
-        catch (ArgumentNullException ex)
-        {
-            Console.WriteLine($"We had problem: {ex.Message}");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"We had problem: {ex.Message}");
-        }
-    }
-}
-
-public class BCGSTABLU : IterativeSolver
-{
-    public BCGSTABLU(int maxIters, double eps) : base(maxIters, eps)
-    {
-    }
-
-    public override void Compute()
-    {
-        try
-        {
-            ArgumentNullException.ThrowIfNull(_matrix, $"{nameof(_matrix)} cannot be null, set the matrix");
-            ArgumentNullException.ThrowIfNull(_vector, $"{nameof(_vector)} cannot be null, set the vector");
-
-            double alpha = 1.0;
-            double omega = 1.0;
-            double rho = 1.0;
-
-            double vectorNorm = _vector.Norm();
-
-            _solution = new(_vector.Length);
-
-            double[] gglnew = new double[_matrix.GGl.Length];
-            double[] ggunew = new double[_matrix.GGu.Length];
-            double[] dinew = new double[_matrix.Di.Length];
-
-            _matrix.GGl.Copy(gglnew);
-            _matrix.GGu.Copy(ggunew);
-            _matrix.Di.Copy(dinew);
-
-            Vector<double> r0 = new(_vector.Length);
-            Vector<double> p = new(_vector.Length);
-            Vector<double> v = new(_vector.Length);
-
-            Stopwatch sw = Stopwatch.StartNew();
-
-            LU(gglnew, ggunew, dinew);
-
-            var r = Direct(_vector - (_matrix * _solution), gglnew, dinew);
-
-            Vector<double>.Copy(r, r0);
-
-            for (int iter = 0; iter < MaxIters && r.Norm() / vectorNorm >= Eps; iter++)
-            {
-                var temp = rho;
-                rho = r0 * r;
-                var beta = rho / temp * (alpha / omega);
-                p = r + (beta * (p - (omega * v)));
-                v = Direct(_matrix * Reverse(p, ggunew), gglnew, dinew);
-                alpha = rho / (r0 * v);
-                var s = r - (alpha * v);
-                var t = Direct(_matrix * Reverse(s, ggunew), gglnew, dinew);
-                omega = t * s / (t * t);
-                _solution += (omega * s) + (alpha * p);
-                r = s - (omega * t);
-            }
-
-            _solution = Reverse(_solution, ggunew);
-
-            sw.Stop();
-
-            _runningTime = sw.Elapsed;
-        }
-        catch (ArgumentNullException ex)
-        {
-            Console.WriteLine($"We had problem: {ex.Message}");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"We had problem: {ex.Message}");
-        }
-    }
 }
 
 public class CGM : IterativeSolver
@@ -412,7 +129,7 @@ public class CGM : IterativeSolver
 
             Vector<double>.Copy(r, z);
 
-            for (int iter = 0; iter < MaxIters && (r.Norm() / vectorNorm) >= Eps; iter++)
+            for (int iter = 0; iter < MaxIters && r.Norm() / vectorNorm >= Eps; iter++)
             {
                 var tmp = _matrix * z;
                 var alpha = r * r / (tmp * z);
@@ -420,7 +137,7 @@ public class CGM : IterativeSolver
                 var squareNorm = r * r;
                 r -= alpha * tmp;
                 var beta = r * r / squareNorm;
-                z = r + (beta * z);
+                z = r + beta * z;
             }
 
             sw.Stop();
@@ -456,17 +173,17 @@ public class CGMCholesky : IterativeSolver
 
             _solution = new(_vector.Length);
 
-            double[] ggnew = new double[_matrix.GGu.Length];
+            double[] ggnew = new double[_matrix.Gg.Length];
             double[] dinew = new double[_matrix.Di.Length];
 
-            _matrix.GGu.Copy(ggnew);
+            _matrix.Gg.Copy(ggnew);
             _matrix.Di.Copy(dinew);
 
             Stopwatch sw = Stopwatch.StartNew();
 
             Cholesky(ggnew, dinew);
 
-            var r = _vector - (_matrix * _solution);
+            var r = _vector - _matrix * _solution;
             var z = MoveForCholesky(r, ggnew, dinew);
 
             for (int iter = 0; iter < MaxIters && r.Norm() / vectorNorm >= Eps; iter++)
@@ -478,7 +195,7 @@ public class CGMCholesky : IterativeSolver
                 r -= alpha * sndTemp;
                 var fstTemp = MoveForCholesky(r, ggnew, dinew);
                 var beta = fstTemp * r / tmp;
-                z = fstTemp + (beta * z);
+                z = fstTemp + beta * z;
             }
 
             sw.Stop();

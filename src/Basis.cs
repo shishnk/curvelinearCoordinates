@@ -33,7 +33,7 @@ public readonly record struct QuadraticBasis : IBasis
         {
             0 => number switch
             {
-                0 => 4.0 * (point.X - 1.0 + (point.X - 0.5)) * (point.Y - 0.5) * (point.Y - 0.5),
+                0 => 4.0 * (point.X - 1.0 + (point.X - 0.5)) * (point.Y - 0.5) * (point.Y - 1.0),
                 1 => -8.0 * (point.X - 1.0 + point.X) * (point.Y - 0.5) * (point.Y - 1.0),
                 2 => 4.0 * (point.X - 0.5 + point.X) * (point.Y - 0.5) * (point.Y - 1.0),
                 3 => -8.0 * (point.X - 1.0 + (point.X - 0.5)) * point.Y * (point.Y - 1.0),

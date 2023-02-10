@@ -5,8 +5,7 @@ public class SparseMatrix
     public int[] Ig { get; init; }
     public int[] Jg { get; init; }
     public double[] Di { get; }
-    public double[] GGl { get; }
-    public double[] GGu { get; }
+    public double[] Gg { get; }
     public int Size { get; }
 
     public SparseMatrix(int size, int sizeOffDiag)
@@ -14,8 +13,7 @@ public class SparseMatrix
         Size = size;
         Ig = new int[size + 1];
         Jg = new int[sizeOffDiag];
-        GGl = new double[sizeOffDiag];
-        GGu = new double[sizeOffDiag];
+        Gg = new double[sizeOffDiag];
         Di = new double[size];
     }
 
@@ -29,8 +27,8 @@ public class SparseMatrix
 
             for (int j = matrix.Ig[i]; j < matrix.Ig[i + 1]; j++)
             {
-                product[i] += matrix.GGl[j] * vector[matrix.Jg[j]];
-                product[matrix.Jg[j]] += matrix.GGu[j] * vector[i];
+                product[i] += matrix.Gg[j] * vector[matrix.Jg[j]];
+                product[matrix.Jg[j]] += matrix.Gg[j] * vector[i];
             }
         }
 
@@ -47,8 +45,8 @@ public class SparseMatrix
 
             for (int j = Ig[i]; j < Ig[i + 1]; j++)
             {
-                A[i, Jg[j]] = GGl[j];
-                A[Jg[j], i] = GGu[j];
+                A[i, Jg[j]] = Gg[j];
+                A[Jg[j], i] = Gg[j];
             }
         }
 
@@ -72,8 +70,7 @@ public class SparseMatrix
 
             for (int k = Ig[i]; k < Ig[i + 1]; k++)
             {
-                GGl[k] = 0.0;
-                GGu[k] = 0.0;
+                Gg[k] = 0.0;
             }
         }
     }
