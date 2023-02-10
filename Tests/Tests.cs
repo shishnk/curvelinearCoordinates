@@ -9,7 +9,7 @@ public interface ITest
 
 public class Test1 : ITest
 {
-    public double U(Point2D point) => point.X * point.Y;
+    public double U(Point2D point) => point.X * point.X * point.X + point.Y * point.Y;
 
-    public double F(Point2D point) => 0.0;
+    public double F(Point2D point) => -6.0 * point.X - 2.0;
 }

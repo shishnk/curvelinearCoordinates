@@ -51,7 +51,7 @@ public class SolverFem
     private Integration _integrator = default!;
     private IterativeSolver _iterativeSolver = default!;
     private DirichletBoundary[] _dirichletBoundaries = default!;
-    private Matrix? _baseStiffnessMatrix;
+    private Matrix[]? _baseStiffnessMatrix;
     private Matrix _baseMassMatrix = default!;
     private Matrix _stiffnessMatrix = default!;
     private Matrix _massMatrix = default!;
@@ -140,7 +140,7 @@ public class SolverFem
 
         if (_baseStiffnessMatrix is null)
         {
-            _baseStiffnessMatrix = new(_basis.Size);
+            _baseStiffnessMatrix = new Matrix[] { new(_basis.Size), new(_basis.Size) };
             _baseMassMatrix = new(_basis.Size);
             var templateElement = new Rectangle(new(0.0, 0.0), new(1.0, 1.0));
 
@@ -148,30 +148,34 @@ public class SolverFem
             {
                 for (int j = 0; j <= i; j++)
                 {
-                    var ik = i;
-                    var jk = j;
-                    Func<Point2D, double> function = p =>
+                    Func<Point2D, double> function;
+
+                    for (int k = 0; k < 2; k++)
                     {
-                        var dXfi1 = _basis.GetDPsi(ik, 0, p);
-                        var dXfi2 = _basis.GetDPsi(jk, 0, p);
+                        var ik = i;
+                        var jk = j;
+                        var k1 = k;
+                        function = p =>
+                        {
+                            var dFi1 = _basis.GetDPsi(ik, k1, p);
+                            var dFi2 = _basis.GetDPsi(jk, k1, p);
 
-                        var dYfi1 = _basis.GetDPsi(ik, 1, p);
-                        var dYfi2 = _basis.GetDPsi(jk, 1, p);
+                            return dFi1 * dFi2;
+                        };
 
-                        return dXfi1 * dXfi2 + dYfi1 * dYfi2;
-                    };
+                        _baseStiffnessMatrix[k][i, j] = _baseStiffnessMatrix[k][j, i] =
+                            _integrator.Gauss2D(function, templateElement);
+                    }
 
-                    _baseStiffnessMatrix[i, j] = _baseStiffnessMatrix[j, i] =
-                        _integrator.Gauss2D(function, templateElement);
-
+                    var i1 = i;
+                    var j1 = j;
                     function = p =>
                     {
-                        var fi1 = _basis.GetPsi(ik, p);
-                        var fi2 = _basis.GetPsi(jk, p);
+                        var fi1 = _basis.GetPsi(i1, p);
+                        var fi2 = _basis.GetPsi(j1, p);
 
                         return fi1 * fi2;
                     };
-
                     _baseMassMatrix[i, j] = _baseMassMatrix[j, i] = _integrator.Gauss2D(function, templateElement);
                 }
             }
@@ -181,7 +185,8 @@ public class SolverFem
         {
             for (int j = 0; j <= i; j++)
             {
-                _stiffnessMatrix[i, j] = _stiffnessMatrix[j, i] = 1.0 / (hx * hy) * _baseStiffnessMatrix[i, j];
+                _stiffnessMatrix[i, j] = _stiffnessMatrix[j, i] =
+                    hy / hx * _baseStiffnessMatrix[0][i, j] + hx / hy * _baseStiffnessMatrix[1][i, j];
             }
         }
 
