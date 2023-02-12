@@ -9,6 +9,43 @@ public interface IBasis
     public double GetDPsi(int number, int varNumber, Point2D point);
 }
 
+public readonly record struct LinearBasis : IBasis
+{
+    public int Size => 4;
+
+    public double GetPsi(int number, Point2D point)
+        => number switch
+        {
+            0 => (1.0 - point.X) * (1.0 - point.Y),
+            1 => (point.X - 1.0) * (1.0 - point.Y),
+            2 => (1.0 - point.X) * (point.Y - 1.0),
+            3 => (point.X - 1.0) * (point.Y - 1.0),
+            _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected function number!")
+        };
+
+    public double GetDPsi(int number, int varNumber, Point2D point)
+        => varNumber switch
+        {
+            0 => number switch
+            {
+                0 => point.Y - 1.0,
+                1 => 1.0 - point.Y,
+                2 => 1.0 - point.Y,
+                3 => point.Y - 1.0,
+                _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected function number!")
+            },
+            1 => number switch
+            {
+                0 => point.X - 1.0,
+                1 => 1.0 - point.X,
+                2 => 1.0 - point.X,
+                3 => point.X - 1.0,
+                _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Not expected function number!")
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(varNumber), varNumber, "Not expected var number!")
+        };
+}
+
 public readonly record struct QuadraticBasis : IBasis
 {
     public int Size => 9;

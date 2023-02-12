@@ -33,12 +33,64 @@ public readonly record struct BoundaryParameters
     }
 }
 
-public class BoundaryHandler
+public interface IBoundaryHandler
+{
+    IEnumerable<IBoundary> Process();
+}
+
+public class LinearBoundaryHandler : IBoundaryHandler
 {
     private readonly BoundaryParameters _parameters;
     private readonly MeshParameters _meshParameters;
 
-    public BoundaryHandler(BoundaryParameters parameters, MeshParameters meshParameters)
+    public LinearBoundaryHandler(BoundaryParameters parameters, MeshParameters meshParameters)
+        => (_parameters, _meshParameters) = (parameters, meshParameters);
+
+    public IEnumerable<IBoundary> Process() // for now only Dirichlet
+    {
+        if (_parameters.TopBorder == 1)
+        {
+            int startingNode = (_meshParameters.SplitsX + 1) * _meshParameters.SplitsY;
+
+            for (int i = 0; i < _meshParameters.SplitsX + 1; i++)
+            {
+                yield return new DirichletBoundary(startingNode + i, 0.0);
+            }
+        }
+
+        if (_parameters.BottomBorder == 1)
+        {
+            for (int i = 0; i < _meshParameters.SplitsX + 1; i++)
+            {
+                yield return new DirichletBoundary(i, 0.0);
+            }
+        }
+
+        if (_parameters.LeftBorder == 1)
+        {
+            for (int i = 0; i < _meshParameters.SplitsY + 1; i++)
+            {
+                yield return new DirichletBoundary(i * ( _meshParameters.SplitsX + 1), 0.0);
+            }
+        }
+
+        if (_parameters.RightBorder != 1) yield break;
+        {
+            for (int i = 0; i < _meshParameters.SplitsY + 1; i++)
+            {
+                yield return new DirichletBoundary(
+                    i *  _meshParameters.SplitsX + _meshParameters.SplitsX + i, 0.0);
+            }
+        }
+    }
+}
+
+public class QuadraticBoundaryHandler : IBoundaryHandler
+{
+    private readonly BoundaryParameters _parameters;
+    private readonly MeshParameters _meshParameters;
+
+    public QuadraticBoundaryHandler(BoundaryParameters parameters, MeshParameters meshParameters)
         => (_parameters, _meshParameters) = (parameters, meshParameters);
 
     public IEnumerable<IBoundary> Process() // for now only Dirichlet

@@ -66,8 +66,6 @@ public class SolverFem
         AssemblySystem();
         AccountingDirichletBoundary();
 
-        _globalMatrix.PrintDense("matrix.txt");
-
         _iterativeSolver.SetMatrix(_globalMatrix);
         _iterativeSolver.SetVector(_globalVector);
         _iterativeSolver.Compute();
