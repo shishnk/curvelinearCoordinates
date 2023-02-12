@@ -30,15 +30,9 @@ public class SolverFem
             return this;
         }
 
-        public SolverFemBuilder SetIntegrator(Integration integrator)
+        public SolverFemBuilder SetAssembler(BaseMatrixAssembler matrixAssembler)
         {
-            _solverFem._integrator = integrator;
-            return this;
-        }
-
-        public SolverFemBuilder SetBasis(IBasis basis)
-        {
-            _solverFem._basis = basis;
+            _solverFem._matrixAssembler = matrixAssembler;
             return this;
         }
 
@@ -48,25 +42,19 @@ public class SolverFem
 
     private IBaseMesh _mesh = default!;
     private ITest _test = default!;
-    private Integration _integrator = default!;
     private IterativeSolver _iterativeSolver = default!;
     private IEnumerable<IBoundary> _boundaries = default!;
-    private Matrix[]? _baseStiffnessMatrix;
-    private Matrix _baseMassMatrix = default!;
-    private Matrix _stiffnessMatrix = default!;
-    private Matrix _massMatrix = default!;
-    private SparseMatrix _globalMatrix = default!;
     private Vector<double> _localVector = default!;
     private Vector<double> _globalVector = default!;
-    private IBasis _basis = default!;
+    private BaseMatrixAssembler _matrixAssembler = default!;
 
     public void Compute()
     {
-         Initialize();
+        Initialize();
         AssemblySystem();
         AccountingDirichletBoundary();
 
-        _iterativeSolver.SetMatrix(_globalMatrix);
+        _iterativeSolver.SetMatrix(_matrixAssembler.GlobalMatrix!);
         _iterativeSolver.SetVector(_globalVector);
         _iterativeSolver.Compute();
 
@@ -91,18 +79,15 @@ public class SolverFem
 
     private void Initialize()
     {
-        _stiffnessMatrix = new(_basis.Size);
-        _massMatrix = new(_basis.Size);
-
         PortraitBuilder.Build(_mesh, out var ig, out var jg);
-        _globalMatrix = new(ig.Length - 1, jg.Length)
+        _matrixAssembler.GlobalMatrix = new(ig.Length - 1, jg.Length)
         {
             Ig = ig,
             Jg = jg
         };
 
         _globalVector = new(ig.Length - 1);
-        _localVector = new(_basis.Size);
+        _localVector = new(_matrixAssembler.BasisSize);
     }
 
     private void AssemblySystem()
@@ -110,89 +95,23 @@ public class SolverFem
         for (int ielem = 0; ielem < _mesh.Elements.Count; ielem++)
         {
             var element = _mesh.Elements[ielem];
+            var bPoint = _mesh.Points[element[0]];
+            var ePoint = _mesh.Points[element[^1]];
 
-            BuildLocalMatrices(ielem);
+            double hx = ePoint.X - bPoint.X;
+            double hy = ePoint.Y - bPoint.Y;
+
+            _matrixAssembler.BuildLocalMatrices(hx, hy);
             BuildLocalVector(ielem);
 
-            for (int i = 0; i < _basis.Size; i++)
+            for (int i = 0; i < _matrixAssembler.BasisSize; i++)
             {
                 _globalVector[element[i]] += _localVector[i];
 
-                for (int j = 0; j < _basis.Size; j++)
+                for (int j = 0; j < _matrixAssembler.BasisSize; j++)
                 {
-                    FillGlobalMatrix(element[i], element[j], _stiffnessMatrix[i, j]);
+                    _matrixAssembler.FillGlobalMatrix(element[i], element[j], _matrixAssembler.StiffnessMatrix[i, j]);
                 }
-            }
-        }
-    }
-
-    private void BuildLocalMatrices(int ielem)
-    {
-        var element = _mesh.Elements[ielem];
-
-        var bPoint = _mesh.Points[element[0]];
-        var ePoint = _mesh.Points[element[^1]];
-
-        double hx = ePoint.X - bPoint.X;
-        double hy = ePoint.Y - bPoint.Y;
-
-        if (_baseStiffnessMatrix is null)
-        {
-            _baseStiffnessMatrix = new Matrix[] { new(_basis.Size), new(_basis.Size) };
-            _baseMassMatrix = new(_basis.Size);
-            var templateElement = new Rectangle(new(0.0, 0.0), new(1.0, 1.0));
-
-            for (int i = 0; i < _basis.Size; i++)
-            {
-                for (int j = 0; j <= i; j++)
-                {
-                    Func<Point2D, double> function;
-
-                    for (int k = 0; k < 2; k++)
-                    {
-                        var ik = i;
-                        var jk = j;
-                        var k1 = k;
-                        function = p =>
-                        {
-                            var dFi1 = _basis.GetDPsi(ik, k1, p);
-                            var dFi2 = _basis.GetDPsi(jk, k1, p);
-
-                            return dFi1 * dFi2;
-                        };
-
-                        _baseStiffnessMatrix[k][i, j] = _baseStiffnessMatrix[k][j, i] =
-                            _integrator.Gauss2D(function, templateElement);
-                    }
-
-                    var i1 = i;
-                    var j1 = j;
-                    function = p =>
-                    {
-                        var fi1 = _basis.GetPsi(i1, p);
-                        var fi2 = _basis.GetPsi(j1, p);
-
-                        return fi1 * fi2;
-                    };
-                    _baseMassMatrix[i, j] = _baseMassMatrix[j, i] = _integrator.Gauss2D(function, templateElement);
-                }
-            }
-        }
-
-        for (int i = 0; i < _basis.Size; i++)
-        {
-            for (int j = 0; j <= i; j++)
-            {
-                _stiffnessMatrix[i, j] = _stiffnessMatrix[j, i] =
-                    hy / hx * _baseStiffnessMatrix[0][i, j] + hx / hy * _baseStiffnessMatrix[1][i, j];
-            }
-        }
-
-        for (int i = 0; i < _basis.Size; i++)
-        {
-            for (int j = 0; j <= i; j++)
-            {
-                _massMatrix[i, j] = _massMatrix[j, i] = hx * hy * _baseMassMatrix[i, j];
             }
         }
     }
@@ -201,29 +120,12 @@ public class SolverFem
     {
         _localVector.Fill(0.0);
 
-        for (int i = 0; i < _basis.Size; i++)
+        for (int i = 0; i < _matrixAssembler.BasisSize; i++)
         {
-            for (int j = 0; j < _basis.Size; j++)
+            for (int j = 0; j < _matrixAssembler.BasisSize; j++)
             {
-                _localVector[i] += _massMatrix[i, j] * _test.F(_mesh.Points[_mesh.Elements[ielem][j]]);
+                _localVector[i] += _matrixAssembler.MassMatrix[i, j] * _test.F(_mesh.Points[_mesh.Elements[ielem][j]]);
             }
-        }
-    }
-
-    private void FillGlobalMatrix(int i, int j, double value)
-    {
-        if (i == j)
-        {
-            _globalMatrix.Di[i] += value;
-            return;
-        }
-
-        if (i <= j) return;
-        for (int ind = _globalMatrix.Ig[i]; ind < _globalMatrix.Ig[i + 1]; ind++)
-        {
-            if (_globalMatrix.Jg[ind] != j) continue;
-            _globalMatrix.Gg[ind] += value;
-            return;
         }
     }
 
@@ -245,30 +147,30 @@ public class SolverFem
             int index;
             if (checkBc[i] != -1)
             {
-                _globalMatrix.Di[i] = 1.0;
+                _matrixAssembler.GlobalMatrix!.Di[i] = 1.0;
                 _globalVector[i] = arrayBoundaries[checkBc[i]].Value;
 
-                for (int k = _globalMatrix.Ig[i]; k < _globalMatrix.Ig[i + 1]; k++)
+                for (int k = _matrixAssembler.GlobalMatrix.Ig[i]; k < _matrixAssembler.GlobalMatrix.Ig[i + 1]; k++)
                 {
-                    index = _globalMatrix.Jg[k];
+                    index = _matrixAssembler.GlobalMatrix.Jg[k];
 
                     if (checkBc[index] == -1)
                     {
-                        _globalVector[index] -= _globalMatrix.Gg[k] * _globalVector[i];
+                        _globalVector[index] -= _matrixAssembler.GlobalMatrix.Gg[k] * _globalVector[i];
                     }
 
-                    _globalMatrix.Gg[k] = 0.0;
+                    _matrixAssembler.GlobalMatrix.Gg[k] = 0.0;
                 }
             }
             else
             {
-                for (int k = _globalMatrix.Ig[i]; k < _globalMatrix.Ig[i + 1]; k++)
+                for (int k = _matrixAssembler.GlobalMatrix!.Ig[i]; k < _matrixAssembler.GlobalMatrix.Ig[i + 1]; k++)
                 {
-                    index = _globalMatrix.Jg[k];
+                    index = _matrixAssembler.GlobalMatrix.Jg[k];
 
                     if (checkBc[index] == -1) continue;
-                    _globalVector[i] -= _globalMatrix.Gg[k] * _globalVector[index];
-                    _globalMatrix.Gg[k] = 0.0;
+                    _globalVector[i] -= _matrixAssembler.GlobalMatrix.Gg[k] * _globalVector[index];
+                    _matrixAssembler.GlobalMatrix.Gg[k] = 0.0;
                 }
             }
         }
