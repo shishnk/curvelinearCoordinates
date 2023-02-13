@@ -5,9 +5,9 @@ var meshCreator = new RegularMeshCreator();
 var mesh = meshCreator.CreateMesh(meshParameters, new MeshQuadraticBuilder());
 SolverFem problem = SolverFem.CreateBuilder()
     .SetMesh(mesh)
-    .SetTest(new Test1())
+    .SetTest(new Test2())
     .SetSolverSlae(new CGMCholesky(1000, 1E-15))
-    .SetAssembler(new BiMatrixAssembler(new QuadraticBasis(), new(Quadratures.SegmentGaussOrder5())))
+    .SetAssembler(new CurvedMatrixAssembler(new QuadraticBasis(), new(Quadratures.SegmentGaussOrder5()), mesh))
     .SetBoundaries(boundaryHandler.Process());
 
 problem.Compute();

@@ -120,4 +120,19 @@ public class Matrix
 
         return resultMatrix;
     }
+
+    public static Matrix operator *(double value, Matrix matrix)
+    {
+        Matrix resultMatrix = new(matrix.Size);
+
+        for (int i = 0; i < resultMatrix.Size; i++)
+        {
+            for (int j = 0; j < resultMatrix.Size; j++)
+            {
+                resultMatrix[i, j] = value * matrix[i, j];
+            }
+        }
+
+        return resultMatrix;
+    }
 }

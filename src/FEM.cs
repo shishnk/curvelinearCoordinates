@@ -95,13 +95,8 @@ public class SolverFem
         for (int ielem = 0; ielem < _mesh.Elements.Count; ielem++)
         {
             var element = _mesh.Elements[ielem];
-            var bPoint = _mesh.Points[element[0]];
-            var ePoint = _mesh.Points[element[^1]];
-
-            double hx = ePoint.X - bPoint.X;
-            double hy = ePoint.Y - bPoint.Y;
-
-            _matrixAssembler.BuildLocalMatrices(hx, hy);
+            
+            _matrixAssembler.BuildLocalMatrices(ielem);
             BuildLocalVector(ielem);
 
             for (int i = 0; i < _matrixAssembler.BasisSize; i++)
