@@ -5,8 +5,8 @@ public abstract class BaseMatrixAssembler
     protected readonly IBasis _basis;
     protected readonly IBaseMesh _mesh;
     protected readonly Integration _integrator;
-    protected readonly Matrix[] _baseStiffnessMatrix;
-    protected readonly Matrix _baseMassMatrix;
+    protected Matrix[]? _baseStiffnessMatrix;
+    protected Matrix? _baseMassMatrix;
 
     public SparseMatrix? GlobalMatrix { get; set; } // need initialize with portrait builder 
     public Matrix StiffnessMatrix { get; }
@@ -18,8 +18,6 @@ public abstract class BaseMatrixAssembler
         _basis = basis;
         _integrator = integrator;
         _mesh = mesh;
-        _baseStiffnessMatrix = new Matrix[] { new(_basis.Size), new(_basis.Size) };
-        _baseMassMatrix = new(_basis.Size);
         StiffnessMatrix = new(_basis.Size);
         MassMatrix = new(_basis.Size);
     }
@@ -64,41 +62,46 @@ public class BiMatrixAssembler : BaseMatrixAssembler
         double hx = ePoint.X - bPoint.X;
         double hy = ePoint.Y - bPoint.Y;
 
-        var templateElement = new Rectangle(new(0.0, 0.0), new(1.0, 1.0));
-
-        for (int i = 0; i < _basis.Size; i++)
+        if (_baseStiffnessMatrix is null)
         {
-            for (int j = 0; j <= i; j++)
-            {
-                Func<Point2D, double> function;
+            _baseStiffnessMatrix = new Matrix[] { new(_basis.Size), new(_basis.Size) };
+            _baseMassMatrix = new(_basis.Size);
+            var templateElement = new Rectangle(new(0.0, 0.0), new(1.0, 1.0));
 
-                for (int k = 0; k < 2; k++)
+            for (int i = 0; i < _basis.Size; i++)
+            {
+                for (int j = 0; j <= i; j++)
                 {
-                    var ik = i;
-                    var jk = j;
-                    var k1 = k;
+                    Func<Point2D, double> function;
+
+                    for (int k = 0; k < 2; k++)
+                    {
+                        var ik = i;
+                        var jk = j;
+                        var k1 = k;
+                        function = p =>
+                        {
+                            var dFi1 = _basis.GetDPsi(ik, k1, p);
+                            var dFi2 = _basis.GetDPsi(jk, k1, p);
+
+                            return dFi1 * dFi2;
+                        };
+
+                        _baseStiffnessMatrix[k][i, j] = _baseStiffnessMatrix[k][j, i] =
+                            _integrator.Gauss2D(function, templateElement);
+                    }
+
+                    var i1 = i;
+                    var j1 = j;
                     function = p =>
                     {
-                        var dFi1 = _basis.GetDPsi(ik, k1, p);
-                        var dFi2 = _basis.GetDPsi(jk, k1, p);
+                        var fi1 = _basis.GetPsi(i1, p);
+                        var fi2 = _basis.GetPsi(j1, p);
 
-                        return dFi1 * dFi2;
+                        return fi1 * fi2;
                     };
-
-                    _baseStiffnessMatrix[k][i, j] = _baseStiffnessMatrix[k][j, i] =
-                        _integrator.Gauss2D(function, templateElement);
+                    _baseMassMatrix[i, j] = _baseMassMatrix[j, i] = _integrator.Gauss2D(function, templateElement);
                 }
-
-                var i1 = i;
-                var j1 = j;
-                function = p =>
-                {
-                    var fi1 = _basis.GetPsi(i1, p);
-                    var fi2 = _basis.GetPsi(j1, p);
-
-                    return fi1 * fi2;
-                };
-                _baseMassMatrix[i, j] = _baseMassMatrix[j, i] = _integrator.Gauss2D(function, templateElement);
             }
         }
 
@@ -115,22 +118,24 @@ public class BiMatrixAssembler : BaseMatrixAssembler
         {
             for (int j = 0; j <= i; j++)
             {
-                MassMatrix[i, j] = MassMatrix[j, i] = hx * hy * _baseMassMatrix[i, j];
+                MassMatrix[i, j] = MassMatrix[j, i] = hx * hy * _baseMassMatrix![i, j];
             }
         }
     }
 }
 
-public class CurvedMatrixAssembler : BaseMatrixAssembler // maybe go change name of class
+public class CurveMatrixAssembler : BaseMatrixAssembler // maybe go change name of class
 {
-    public CurvedMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh) : base(basis, integrator, mesh)
+    public CurveMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh) : base(basis, integrator, mesh)
     {
+        _baseStiffnessMatrix = new Matrix[] { new(_basis.Size), new(_basis.Size) };
+        _baseMassMatrix = new(_basis.Size);
     }
 
     public override void BuildLocalMatrices(int ielem)
     {
         var templateElement = new Rectangle(new(0.0, 0.0), new(1.0, 1.0));
-        
+
         var calculates = CalculateJacobian(ielem);
 
         for (int i = 0; i < _basis.Size; i++)
@@ -152,9 +157,9 @@ public class CurvedMatrixAssembler : BaseMatrixAssembler // maybe go change name
                            (calculates.Reverse[1, 0] * dxFi2 + calculates.Reverse[1, 1] * dyFi2);
                 };
 
-                _baseStiffnessMatrix[0][i, j] = _baseStiffnessMatrix[0][j, i] =
+                _baseStiffnessMatrix![0][i, j] = _baseStiffnessMatrix[0][j, i] =
                     _integrator.Gauss2D(function, templateElement) *
-                    Math.Abs(calculates.Default); // default ~ determinant of jacobian
+                    Math.Abs(calculates.Determinant); // ~ determinant of jacobian
 
                 function = p =>
                 {
@@ -163,8 +168,8 @@ public class CurvedMatrixAssembler : BaseMatrixAssembler // maybe go change name
 
                     return fi1 * fi2;
                 };
-                _baseMassMatrix[i, j] = _baseMassMatrix[j, i] =
-                    _integrator.Gauss2D(function, templateElement) * Math.Abs(calculates.Default);
+                _baseMassMatrix![i, j] = _baseMassMatrix[j, i] =
+                    _integrator.Gauss2D(function, templateElement) * Math.Abs(calculates.Determinant);
             }
         }
 
@@ -172,7 +177,7 @@ public class CurvedMatrixAssembler : BaseMatrixAssembler // maybe go change name
         {
             for (int j = 0; j <= i; j++)
             {
-                StiffnessMatrix[i, j] = StiffnessMatrix[j, i] = _baseStiffnessMatrix[0][i, j];
+                StiffnessMatrix[i, j] = StiffnessMatrix[j, i] = _baseStiffnessMatrix![0][i, j];
             }
         }
 
@@ -180,12 +185,12 @@ public class CurvedMatrixAssembler : BaseMatrixAssembler // maybe go change name
         {
             for (int j = 0; j <= i; j++)
             {
-                MassMatrix[i, j] = MassMatrix[j, i] = _baseMassMatrix[i, j];
+                MassMatrix[i, j] = MassMatrix[j, i] = _baseMassMatrix![i, j];
             }
         }
     }
 
-    private (double Default, Matrix Reverse) CalculateJacobian(int ielem)
+    private (double Determinant, Matrix Reverse) CalculateJacobian(int ielem)
     {
         var dx = new double[2];
         var dy = new double[2];
@@ -212,9 +217,9 @@ public class CurvedMatrixAssembler : BaseMatrixAssembler // maybe go change name
 
         var jacobian = dx[0] * dy[1] - dy[0] * dx[1];
 
-        var reverse = new Matrix(4)
+        var reverse = new Matrix(2)
         {
-            [0, 0] = dy[0],
+            [0, 0] = dy[1],
             [0, 1] = -dx[1],
             [1, 0] = -dy[0],
             [1, 1] = dx[0]

@@ -2,63 +2,75 @@
 
 public interface IMeshCreator
 {
-    IBaseMesh CreateMesh(MeshParameters meshParameters, MeshBuilder? meshBuilder = null);
+    IBaseMesh CreateMesh(IParameters meshParameters, MeshBuilder? meshBuilder = null);
 }
 
 public class RegularMeshCreator : IMeshCreator
 {
-    public IBaseMesh CreateMesh(MeshParameters meshParameters, MeshBuilder? meshBuilder = null) =>
-        new RegularMesh(meshParameters, meshBuilder ?? new MeshLinearBuilder());
+    public IBaseMesh CreateMesh(IParameters meshParameters, MeshBuilder? meshBuilder = null) =>
+        new RegularMesh(meshParameters, meshBuilder ?? new LinearMeshBuilder());
 }
 
 // public class IrregularMesh : BaseMesh TODO may be
 
 public abstract class MeshBuilder
 {
-    public abstract (List<Point2D>, int[][]) Build(MeshParameters meshParameters);
+    protected abstract int SizeElement { get; }
 
-    protected static (List<Point2D>, int[][]) BaseBuild(MeshParameters meshParameters, int sizeElement)
+    public abstract (List<Point2D>, int[][]) Build(IParameters meshParameters);
+
+    protected (List<Point2D>, int[][]) BaseBuild(IParameters meshParameters)
     {
+        if (meshParameters is not MeshParameters parameters)
+        {
+            throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
+        }
+
+        if (parameters.SplitsX is < 1 or < 1)
+        {
+            throw new("The number of splits must be greater than or equal to 1");
+        }
+
         var result = new
         {
             Points = new List<Point2D>(),
-            Elements = new int[meshParameters.SplitsX * meshParameters.SplitsY][].Select(_ => new int[sizeElement])
+            Elements = new int[parameters.SplitsX * parameters.SplitsY][].Select(_ => new int[SizeElement])
                 .ToArray(),
         };
 
-        double hx = meshParameters.IntervalX.Length / meshParameters.SplitsX;
-        double hy = meshParameters.IntervalY.Length / meshParameters.SplitsY;
+        double hx = parameters.IntervalX.Length / parameters.SplitsX;
+        double hy = parameters.IntervalY.Length / parameters.SplitsY;
 
-        double[] pointsX = new double[meshParameters.SplitsX + 1];
-        double[] pointsY = new double[meshParameters.SplitsY + 1];
+        double[] pointsX = new double[parameters.SplitsX + 1];
+        double[] pointsY = new double[parameters.SplitsY + 1];
 
-        pointsX[0] = meshParameters.IntervalX.LeftBorder;
-        pointsY[0] = meshParameters.IntervalY.LeftBorder;
+        pointsX[0] = parameters.IntervalX.LeftBorder;
+        pointsY[0] = parameters.IntervalY.LeftBorder;
 
-        for (int i = 1; i < meshParameters.SplitsX + 1; i++)
+        for (int i = 1; i < parameters.SplitsX + 1; i++)
         {
             pointsX[i] = pointsX[i - 1] + hx;
         }
 
-        for (int i = 1; i < meshParameters.SplitsY + 1; i++)
+        for (int i = 1; i < parameters.SplitsY + 1; i++)
         {
             pointsY[i] = pointsY[i - 1] + hy;
         }
 
-        for (int j = 0; j < meshParameters.SplitsY + 1; j++)
+        for (int j = 0; j < parameters.SplitsY + 1; j++)
         {
-            for (int i = 0; i < meshParameters.SplitsX + 1; i++)
+            for (int i = 0; i < parameters.SplitsX + 1; i++)
             {
                 result.Points.Add(new(pointsX[i], pointsY[j]));
             }
         }
 
-        int nx = meshParameters.SplitsX + 1;
+        int nx = parameters.SplitsX + 1;
         int index = 0;
 
-        for (int j = 0; j < meshParameters.SplitsY; j++)
+        for (int j = 0; j < parameters.SplitsY; j++)
         {
-            for (int i = 0; i < meshParameters.SplitsX; i++)
+            for (int i = 0; i < parameters.SplitsX; i++)
             {
                 result.Elements[index][0] = i + j * nx;
                 result.Elements[index][1] = i + 1 + j * nx;
@@ -71,23 +83,37 @@ public abstract class MeshBuilder
     }
 }
 
-public class MeshLinearBuilder : MeshBuilder
+public class LinearMeshBuilder : MeshBuilder
 {
-    public override (List<Point2D>, int[][]) Build(MeshParameters meshParameters)
+    protected override int SizeElement => 4;
+
+    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
     {
-        var result = BaseBuild(meshParameters, 4);
+        if (meshParameters is not MeshParameters parameters)
+        {
+            throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
+        }
+
+        var result = BaseBuild(meshParameters);
 
         return (result.Item1, result.Item2);
     }
 }
 
-public class MeshQuadraticBuilder : MeshBuilder
+public class QuadraticMeshBuilder : MeshBuilder
 {
-    public override (List<Point2D>, int[][]) Build(MeshParameters meshParameters)
+    protected override int SizeElement => 9;
+
+    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
     {
-        (List<Point2D> Points, int[][] Elements) result = BaseBuild(meshParameters, 9);
-        var pointsX = new double[2 * meshParameters.SplitsX + 1];
-        var pointsY = new double[2 * meshParameters.SplitsY + 1];
+        if (meshParameters is not MeshParameters parameters)
+        {
+            throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
+        }
+
+        (List<Point2D> Points, int[][] Elements) result = BaseBuild(meshParameters);
+        var pointsX = new double[2 * parameters.SplitsX + 1];
+        var pointsY = new double[2 * parameters.SplitsY + 1];
         var vertices = new Point2D[9];
 
         pointsX.Fill(int.MinValue);
@@ -118,12 +144,12 @@ public class MeshQuadraticBuilder : MeshBuilder
             }
         }
 
-        var nx = 2 * meshParameters.SplitsX + 1;
+        var nx = 2 * parameters.SplitsX + 1;
         var index = 0;
 
-        for (int j = 0; j < meshParameters.SplitsY; j++)
+        for (int j = 0; j < parameters.SplitsY; j++)
         {
-            for (int i = 0; i < meshParameters.SplitsX; i++)
+            for (int i = 0; i < parameters.SplitsX; i++)
             {
                 result.Elements[index][0] = i + j * 2 * nx + i;
                 result.Elements[index][1] = i + 1 + 2 * j * nx + i;
@@ -154,9 +180,92 @@ public class MeshQuadraticBuilder : MeshBuilder
     }
 }
 
-public readonly record struct MeshParameters(Interval IntervalX, int SplitsX, Interval IntervalY, int SplitsY)
+public class CurveLinearMeshBuilder : MeshBuilder
 {
-    public static MeshParameters ReadJson(string jsonPath)
+    protected override int SizeElement => 4;
+
+    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
+    {
+        if (meshParameters is not CurveMeshParameters parameters)
+        {
+            throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
+        }
+
+        var result = new
+        {
+            Points = new List<Point2D>(),
+            Elements = new int[parameters.Steps == 4 ? 1 : parameters.Steps / 2][].Select(_ => new int[SizeElement])
+                .ToArray()
+        };
+
+        result.Points.Add(parameters.Center);
+
+        for (int i = 0; i < parameters.Steps; i++)
+        {
+            double newX = parameters.Radius * Math.Cos(parameters.Angle * i);
+            double newY = parameters.Radius * Math.Sin(parameters.Angle * i);
+
+            result.Points.Add(new(newX, newY));
+        }
+
+        if (result.Elements.Length == 1)
+        {
+            result.Elements[0][0] = 0;
+            result.Elements[0][1] = 1;
+            result.Elements[0][2] = 2;
+            result.Elements[0][3] = 3;
+
+            return (result.Points.Skip(1).ToList(), result.Elements);
+        }
+
+        var idx = 0;
+
+        for (int i = 0, k = 0; i < parameters.Steps / 2; i++, k += 2)
+        {
+            result.Elements[idx][0] = 0;
+            result.Elements[idx][1] = k + 1;
+            result.Elements[idx][2] = k + 2;
+            result.Elements[idx++][3] = k + 3;
+        }
+
+        result.Elements[idx - 1][3] = 1; // last node is starting
+        result.Elements[idx - 1] = result.Elements[idx - 1].OrderBy(v => v).ToArray(); // ordering
+
+        return (result.Points, result.Elements);
+    }
+}
+
+public class CurveQuadraticMeshBuilder : MeshBuilder
+{
+    protected override int SizeElement => 9;
+
+    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
+    {
+        if (meshParameters is not CurveMeshParameters parameters)
+        {
+            throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
+        }
+
+        var result = new
+        {
+            Points = new List<Point2D>(),
+            Elements = new int[parameters.Steps / 2][].Select(_ => new int[SizeElement])
+                .ToArray(),
+        };
+
+        return (result.Points, result.Elements);
+    }
+}
+
+public interface IParameters
+{
+    public static abstract IParameters ReadJson(string jsonPath);
+}
+
+public readonly record struct MeshParameters
+    (Interval IntervalX, int SplitsX, Interval IntervalY, int SplitsY) : IParameters
+{
+    public static IParameters ReadJson(string jsonPath)
     {
         if (!File.Exists(jsonPath))
         {
@@ -165,6 +274,41 @@ public readonly record struct MeshParameters(Interval IntervalX, int SplitsX, In
 
         using var sr = new StreamReader(jsonPath);
         return JsonConvert.DeserializeObject<MeshParameters>(sr.ReadToEnd());
+    }
+}
+
+public readonly record struct CurveMeshParameters : IParameters
+{
+    [JsonIgnore] public double Angle { get; }
+    public Point2D Center { get; }
+    public double Radius { get; }
+    public int Steps { get; }
+
+    [JsonConstructor]
+    public CurveMeshParameters(Point2D center, double radius, int steps)
+    {
+        Center = center;
+        Radius = radius;
+        Steps = steps;
+        Angle = 2.0 * Math.PI / Steps;
+    }
+
+    public static IParameters ReadJson(string jsonPath)
+    {
+        if (!File.Exists(jsonPath))
+        {
+            throw new("File does not exist");
+        }
+
+        using var sr = new StreamReader(jsonPath);
+        return JsonConvert.DeserializeObject<CurveMeshParameters>(sr.ReadToEnd());
+    }
+
+    public void Deconstruct(out Point2D Center, out double Radius, out int Steps)
+    {
+        Center = this.Center;
+        Radius = this.Radius;
+        Steps = this.Steps;
     }
 }
 
@@ -182,13 +326,6 @@ public class RegularMesh : IBaseMesh
     public IReadOnlyList<Point2D> Points => _points;
     public IReadOnlyList<IReadOnlyList<int>> Elements => _elements;
 
-    public RegularMesh(MeshParameters meshParameters, MeshBuilder meshBuilder)
-    {
-        if (meshParameters.SplitsX < 1 || meshParameters.SplitsY < 1)
-        {
-            throw new("The number of splits must be greater than or equal to 1");
-        }
-
-        (_points, _elements) = meshBuilder.Build(meshParameters);
-    }
+    public RegularMesh(IParameters meshParameters, MeshBuilder meshBuilder)
+        => (_points, _elements) = meshBuilder.Build(meshParameters);
 }

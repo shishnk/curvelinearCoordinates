@@ -16,7 +16,7 @@ public class Test1 : ITest
 
 public class Test2 : ITest
 {
-    public double U(Point2D point) => point.X * point.Y;
+    public double U(Point2D point) => point.X + point.Y;
 
     public double F(Point2D point) => 0.0;
 }

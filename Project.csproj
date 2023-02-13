@@ -30,10 +30,9 @@
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <None Remove="bin\**" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Content Include="bin\Debug\net7.0\matrix.txt" />
+        <None Update="input\curveMeshParameters.json">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

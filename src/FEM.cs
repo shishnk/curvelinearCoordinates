@@ -65,7 +65,7 @@ public class SolverFem
             exact[i] = _test.U(_mesh.Points[i]);
         }
 
-        var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v1, v2));
+        var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v2, v1));
 
         foreach (var (v1, v2) in result)
         {
