@@ -2,7 +2,7 @@
 
 // var meshParameters = MeshParameters.ReadJson("input/meshParameters.json");
 var boundariesParameters = BoundaryParameters.ReadJson("input/boundaryParameters.json");
-var boundaryHandler = new CurveLinearBoundaryHandler(meshParameters, boundariesParameters);
+var boundaryHandler = new CurveLinearBoundaryHandler(boundariesParameters, meshParameters);
 var meshCreator = new RegularMeshCreator();
 var mesh = meshCreator.CreateMesh(meshParameters, new CurveLinearMeshBuilder());
 SolverFem problem = SolverFem.CreateBuilder()

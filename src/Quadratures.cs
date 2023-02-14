@@ -19,14 +19,14 @@ public static class Quadratures
         const int n = 3;
         double[] points =
         {
-            -Math.Sqrt(3.0 / 5.0),
             0,
+            -Math.Sqrt(3.0 / 5.0),
             Math.Sqrt(3.0 / 5.0)
         };
         double[] weights =
         {
-            5.0 / 9.0,
             8.0 / 9.0,
+            5.0 / 9.0,
             5.0 / 9.0
         };
 

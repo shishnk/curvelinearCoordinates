@@ -11,7 +11,7 @@ public class RegularMeshCreator : IMeshCreator
         new RegularMesh(meshParameters, meshBuilder ?? new LinearMeshBuilder());
 }
 
-// public class IrregularMesh : BaseMesh TODO may be
+// public class IrregularMesh : BaseMesh TODO maybe
 
 public abstract class MeshBuilder
 {
@@ -228,10 +228,64 @@ public class CurveLinearMeshBuilder : MeshBuilder
             result.Elements[idx++][3] = k + 3;
         }
 
-        result.Elements[idx - 1][3] = 1; // last node is starting
+        result.Elements[idx - 1][3] = 1; // last node is starting + 1
         result.Elements[idx - 1] = result.Elements[idx - 1].OrderBy(v => v).ToArray(); // ordering
 
-        return (result.Points, result.Elements);
+        using StreamWriter sw = new("output/elements.txt"), sw1 = new("output/points.txt");
+
+        foreach (var elem in result.Elements)
+        {
+            foreach (var node in elem)
+            {
+                sw.Write(node + " ");
+            }
+
+            sw.WriteLine();
+        }
+
+        foreach (var point in result.Points)
+        {
+            sw1.WriteLine($"{point.X} {point.Y}");
+        }
+
+        result.Elements[0][0] = 0;
+        result.Elements[0][1] = 1;
+        result.Elements[0][2] = 2;
+        result.Elements[0][3] = 3;
+
+        // result.Elements[1][0] = 1;
+        // result.Elements[1][1] = 2;
+        // result.Elements[1][2] = 4;
+        // result.Elements[1][3] = 5;
+        //
+        // result.Elements[2][0] = 3;
+        // result.Elements[2][1] = 4;
+        // result.Elements[2][2] = 6;
+        // result.Elements[2][3] = 7;
+        //
+        // result.Elements[3][0] = 4;
+        // result.Elements[3][1] = 5;
+        // result.Elements[3][2] = 7;
+        // result.Elements[3][3] = 8;
+
+        var copy = result.Points.ToList();
+
+        // result.Points[0] = copy[6];
+        // result.Points[1] = copy[7];
+        // result.Points[2] = copy[8];
+        // result.Points[3] = copy[5];
+        // result.Points[4] = copy[0];
+        // result.Points[5] = copy[1];
+        // result.Points[6] = copy[4];
+        // result.Points[7] = copy[3];
+        // result.Points[8] = copy[2];
+
+        result.Points[0] = new(1, 1);
+        result.Points[1] = new(5, 3);
+        result.Points[2] = new(2, 5);
+        result.Points[3] = new(4, 5);
+
+        return (result.Points.SkipLast(5).ToList(), result.Elements.SkipLast(3).ToArray());
     }
 }
 
@@ -302,13 +356,6 @@ public readonly record struct CurveMeshParameters : IParameters
 
         using var sr = new StreamReader(jsonPath);
         return JsonConvert.DeserializeObject<CurveMeshParameters>(sr.ReadToEnd());
-    }
-
-    public void Deconstruct(out Point2D Center, out double Radius, out int Steps)
-    {
-        Center = this.Center;
-        Radius = this.Radius;
-        Steps = this.Steps;
     }
 }
 
