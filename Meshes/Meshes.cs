@@ -191,11 +191,12 @@ public class CurveLinearMeshBuilder : MeshBuilder
             throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
         }
 
-        var radiiList = new List<double> { parameters.Radius1, parameters.Radius2 };
+        var radiiList = new List<double> { parameters.Radius2, parameters.Radius1 };
 
+        int count;
         for (int k = 0; k < parameters.Splits; k++)
         {
-            var count = radiiList.Count;
+            count = radiiList.Count;
 
             for (int i = 0; i < count - 1; i++)
             {
@@ -204,7 +205,7 @@ public class CurveLinearMeshBuilder : MeshBuilder
 
             radiiList = radiiList.OrderByDescending(v => v).ToList();
         }
-        
+
         var result = new
         {
             Points = new List<Point2D>(),
@@ -224,19 +225,53 @@ public class CurveLinearMeshBuilder : MeshBuilder
         }
 
         var idx = 0;
+        var pass = false;
+        var step = 0;
+        count = 0;
 
-        for (int i = 0; i < (radiiList.Count - 1) * parameters.Steps - 1; i++)
+        for (int i = 0; i < (radiiList.Count - 1) * parameters.Steps; i++)
         {
-            result.Elements[idx][0] = i;
-            result.Elements[idx][1] = i + 1;
-            result.Elements[idx][2] = result.Elements[idx][0] + parameters.Steps;
-            result.Elements[idx][3] = result.Elements[idx++][1] + parameters.Steps;
+            if (!pass)
+            {
+                result.Elements[idx][0] = i;
+                result.Elements[idx][1] = i + 1;
+                result.Elements[idx][2] = result.Elements[idx][0] + parameters.Steps;
+                result.Elements[idx][3] = result.Elements[idx++][1] + parameters.Steps;
+                step++;
+
+                if (step != parameters.Steps - 1) continue;
+                pass = true;
+                step = 0;
+            }
+            else
+            {
+                result.Elements[idx][0] = count * parameters.Steps;
+                result.Elements[idx][1] = result.Elements[idx - 1][1];
+                result.Elements[idx][2] = result.Elements[idx - 1][1] + 1;
+                count++;
+                result.Elements[idx++][3] = (count + 1) * parameters.Steps - 1;
+                pass = false;
+            }
         }
 
-        result.Elements[idx][0] = (radiiList.Count - 2) * parameters.Steps;
-        result.Elements[idx][1] = result.Elements[idx - 1][1];
-        result.Elements[idx][2] = result.Elements[idx - 1][1] + 1;
-        result.Elements[idx][3] = result.Points.Count - 1;
+        using StreamWriter sw1 = new("output/linearPoints.txt"),
+            sw2 = new("output/points.txt"),
+            sw3 = new("output/elements.txt");
+
+        foreach (var point in result.Points)
+        {
+            sw1.WriteLine($"{point.X} {point.Y}");
+        }
+
+        foreach (var element in result.Elements)
+        {
+            foreach (var node in element)
+            {
+                sw3.Write(node + " ");
+            }
+
+            sw3.WriteLine();
+        }
 
         return (result.Points, result.Elements.ToArray());
     }
