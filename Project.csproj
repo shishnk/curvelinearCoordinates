@@ -12,6 +12,7 @@
         <Using Include="Project.Meshes" />
         <Using Include="Project.Tests" />
         <Using Include="Newtonsoft.Json" />
+        <Using Include="Newtonsoft.Json.Linq" />
         <Using Include="System.Collections" />
         <Using Include="System.Collections.Immutable" />
         <Using Include="System.Numerics" />
@@ -37,6 +38,12 @@
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <None Update="output\points.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\matrixAfter.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\matrixBefore.txt">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>

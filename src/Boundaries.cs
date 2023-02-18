@@ -144,31 +144,20 @@ public class CurveLinearBoundaryHandler : IBoundaryHandler
 
     public IEnumerable<IBoundary> Process() // for now only Dirichlet
     {
-        // if (_meshParameters!.Value.Steps == 4)
-        // {
-        //     for (int i = 0; i < _meshParameters.Value.Steps; i++)
-        //     {
-        //         yield return new DirichletBoundary(i, 0.0);
-        //     }
-        //
-        //     yield break;
-        // }
-        //
-        // for (int i = 1; i < _meshParameters!.Value.Steps + 1; i++) // i = 0 ~ center node number
-        // {
-        //     yield return new DirichletBoundary(i, 0.0);
-        // }
+        var array = new DirichletBoundary[2 * _meshParameters!.Value.Steps];
 
-        var array = new DirichletBoundary[8];
-
-        array[0] = new(0, 0.0);
-        array[1] = new(1, 0.0);
-        array[2] = new(2, 0.0);
-        array[3] = new(3, 0.0);
-        array[4] = new(5, 0.0);
-        array[5] = new(6, 0.0);
-        array[6] = new(7, 0.0);
-        array[7] = new(8, 0.0);
+        for (int i = 0,
+             k = _meshParameters.Value.Steps,
+             j = _meshParameters.Value.Splits != 0
+                 ? 2 * _meshParameters.Value.Splits *
+                   _meshParameters!.Value.Steps
+                 : _meshParameters.Value.Steps;
+             i < array.Length / 2;
+             i++, j++, k++)
+        {
+            array[i] = new(i, 0.0);
+            array[k] = new(j, 0.0);
+        }
 
         return array;
     }

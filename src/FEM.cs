@@ -52,7 +52,10 @@ public class SolverFem
     {
         Initialize();
         AssemblySystem();
+        _matrixAssembler.GlobalMatrix.PrintDense("output/matrixBefore.txt");
         AccountingDirichletBoundary();
+
+        _matrixAssembler.GlobalMatrix.PrintDense("output/matrixAfter.txt");
 
         _iterativeSolver.SetMatrix(_matrixAssembler.GlobalMatrix!);
         _iterativeSolver.SetVector(_globalVector);
@@ -95,7 +98,7 @@ public class SolverFem
         for (int ielem = 0; ielem < _mesh.Elements.Count; ielem++)
         {
             var element = _mesh.Elements[ielem];
-            
+
             _matrixAssembler.BuildLocalMatrices(ielem);
             BuildLocalVector(ielem);
 
@@ -105,7 +108,8 @@ public class SolverFem
 
                 for (int j = 0; j < _matrixAssembler.BasisSize; j++)
                 {
-                    _matrixAssembler.FillGlobalMatrix(element[i], element[j], _matrixAssembler.StiffnessMatrix[i, j]);
+                    _matrixAssembler.FillGlobalMatrix(element[i], element[j],
+                        _matrixAssembler.StiffnessMatrix[i, j] + _matrixAssembler.MassMatrix[i, j]);
                 }
             }
         }
@@ -129,13 +133,19 @@ public class SolverFem
         int[] checkBc = new int[_mesh.Points.Count];
 
         checkBc.Fill(-1);
-        var arrayBoundaries = _boundaries.ToArray();
+        var boundariesArray = _boundaries.ToArray();
 
-        for (int i = 0; i < arrayBoundaries.Length; i++)
+        for (int i = 0; i < boundariesArray.Length; i++)
         {
-            arrayBoundaries[i].Value = _test.U(_mesh.Points[arrayBoundaries[i].Node]);
-            checkBc[arrayBoundaries[i].Node] = i;
+            boundariesArray[i].Value = _test.U(_mesh.Points[boundariesArray[i].Node]);
+            checkBc[boundariesArray[i].Node] = i;
         }
+
+        // for (int i = 0; i < arrayBoundaries.Length; i++)
+        // {
+        //     _matrixAssembler.GlobalMatrix.Di[arrayBoundaries[i].Node] = 1E+32;
+        //     _globalVector[arrayBoundaries[i].Node] = 1E+32 * arrayBoundaries[i].Value;
+        // }
 
         for (int i = 0; i < _mesh.Points.Count; i++)
         {
@@ -143,7 +153,7 @@ public class SolverFem
             if (checkBc[i] != -1)
             {
                 _matrixAssembler.GlobalMatrix!.Di[i] = 1.0;
-                _globalVector[i] = arrayBoundaries[checkBc[i]].Value;
+                _globalVector[i] = boundariesArray[checkBc[i]].Value;
 
                 for (int k = _matrixAssembler.GlobalMatrix.Ig[i]; k < _matrixAssembler.GlobalMatrix.Ig[i + 1]; k++)
                 {
@@ -181,6 +191,17 @@ public class SolverFem
         }
 
         Array.ForEach(error, Console.WriteLine);
+
+        var sum = 0.0;
+
+        for (int i = 0; i < error.Length; i++)
+        {
+            sum += error[i] * error[i];
+        }
+
+        sum = Math.Sqrt(sum / _mesh.Points.Count);
+
+        Console.WriteLine($"rms = {sum}");
     }
 
     public static SolverFemBuilder CreateBuilder() => new();
