@@ -108,8 +108,7 @@ public class SolverFem
 
                 for (int j = 0; j < _matrixAssembler.BasisSize; j++)
                 {
-                    _matrixAssembler.FillGlobalMatrix(element[i], element[j],
-                        _matrixAssembler.StiffnessMatrix[i, j] + _matrixAssembler.MassMatrix[i, j]);
+                    _matrixAssembler.FillGlobalMatrix(element[i], element[j], _matrixAssembler.StiffnessMatrix[i, j]);
                 }
             }
         }
@@ -192,12 +191,7 @@ public class SolverFem
 
         Array.ForEach(error, Console.WriteLine);
 
-        var sum = 0.0;
-
-        for (int i = 0; i < error.Length; i++)
-        {
-            sum += error[i] * error[i];
-        }
+        var sum = error.Sum(t => t * t);
 
         sum = Math.Sqrt(sum / _mesh.Points.Count);
 

@@ -1,6 +1,6 @@
 ﻿{
-  "IntervalX": "[0.0, 3.0]",
+  "IntervalX": "[0.0, 2.0]",
   "SplitsX": 2,
-  "IntervalY": "[0.0, 3.0]",
+  "IntervalY": "[0.0, 2.0]",
   "SplitsY": 2
 }

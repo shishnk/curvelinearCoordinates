@@ -1,7 +1,7 @@
 {
-  "Center": "Point(1.5, 1.0)",
+  "Center": "Point(0.0, 0.0)",
   "Radius1": 1.0,
   "Radius2": 2.0,
-  "Steps": 12,
-  "Splits": 2
+  "Steps": 40,
+  "Splits": 1
 }

@@ -13,7 +13,7 @@ public static class PortraitBuilder
 
         int localSize = mesh.Elements[0].Count;
 
-        foreach (var element in mesh.Elements)
+        foreach (var element in mesh.Elements.Select(list => list.OrderBy(node => node).ToArray()))
         {
             for (int i = 0; i < localSize - 1; i++)
             {

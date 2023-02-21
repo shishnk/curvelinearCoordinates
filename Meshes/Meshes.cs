@@ -224,6 +224,8 @@ public class CurveLinearMeshBuilder : MeshBuilder
             }
         }
 
+        parameters.RadiiCounts = radiiList.Count; // TODO
+
         var idx = 0;
         var pass = false;
         var step = 0;
@@ -288,44 +290,108 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
             throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
         }
 
+        var radiiList = new List<double>
+            { parameters.Radius2, (parameters.Radius1 + parameters.Radius2) / 2.0, parameters.Radius1 };
+
+        int count;
+
+        for (int k = 0; k < parameters.Splits; k++)
+        {
+            count = radiiList.Count;
+
+            for (int i = 0; i < count - 1; i++)
+            {
+                radiiList.Add((radiiList[i] + radiiList[i + 1]) / 2.0);
+            }
+
+            radiiList = radiiList.OrderByDescending(v => v).ToList();
+        }
+
         var result = new
         {
             Points = new List<Point2D>(),
-            Elements = new int[1][].Select(_ => new int[SizeElement - 5])
-                .ToArray(),
+            Elements = new int[parameters.Steps * (radiiList.Count / 2)][]
+                .Select(_ => new int[SizeElement])
+                .ToArray()
         };
 
-        // result.Elements[0][0] = 0;
-        // result.Elements[0][1] = 1;
-        // result.Elements[0][2] = 2;
-        // result.Elements[0][3] = 3;
-        // result.Elements[0][4] = 4;
-        // result.Elements[0][5] = 5;
-        // result.Elements[0][6] = 6;
-        // result.Elements[0][7] = 7;
-        // result.Elements[0][8] = 8;
-        //
-        // result.Points.Add(new(1, 1));
-        // result.Points.Add(new(3, 2));
-        // result.Points.Add(new(5, 3));
-        // result.Points.Add(new(1.5, 3));
-        // result.Points.Add(new(3, 3.5));
-        // result.Points.Add(new(4.5, 4));
-        // result.Points.Add(new(2, 5));
-        // result.Points.Add(new(3, 5));
-        // result.Points.Add(new(4, 5));
+        int newSteps = parameters.Steps * 2;
+        double newAngle = 2.0 * Math.PI / newSteps;
 
-        result.Points.Add(new(1, 1));
-        result.Points.Add(new(5, 3));
-        result.Points.Add(new(2, 5));
-        result.Points.Add(new(4, 5));
+        foreach (var radius in radiiList)
+        {
+            for (int i = 0; i < newSteps; i++)
+            {
+                double newX = radius * Math.Cos(newAngle * i) + parameters.Center.X;
+                double newY = radius * Math.Sin(newAngle * i) + parameters.Center.Y;
 
-        result.Elements[0][0] = 0;
-        result.Elements[0][1] = 1;
-        result.Elements[0][2] = 2;
-        result.Elements[0][3] = 3;
+                result.Points.Add(new(newX, newY));
+            }
+        }
 
-        return (result.Points, result.Elements);
+        parameters.RadiiCounts = radiiList.Count; // TODO
+
+        var idx = 0;
+        var pass = false;
+        var step = 0;
+        count = 0;
+
+        for (int i = 0, k = 0; i < parameters.Steps * (radiiList.Count / 2); i++, k += 2)
+        {
+            if (!pass)
+            {
+                result.Elements[idx][0] = k;
+                result.Elements[idx][1] = k + 1;
+                result.Elements[idx][2] = k + 2;
+                result.Elements[idx][3] = result.Elements[idx][0] + newSteps;
+                result.Elements[idx][4] = result.Elements[idx][1] + newSteps;
+                result.Elements[idx][5] = result.Elements[idx][2] + newSteps;
+                result.Elements[idx][6] = result.Elements[idx][0] + 2 * newSteps;
+                result.Elements[idx][7] = result.Elements[idx][1] + 2 * newSteps;
+                result.Elements[idx][8] = result.Elements[idx++][2] + 2 * newSteps;
+                step++;
+
+                if (step != parameters.Steps - 1) continue;
+                pass = true;
+                step = 0;
+            }
+            else
+            {
+                result.Elements[idx][0] = result.Elements[idx - 1][2];
+                result.Elements[idx][1] = result.Elements[idx][0] + 1;
+                result.Elements[idx][2] = count * newSteps;
+                count += 2;
+                result.Elements[idx][3] = result.Elements[idx - 1][5];
+                result.Elements[idx][4] = result.Elements[idx - 1][5] + 1;
+                result.Elements[idx][5] = result.Elements[idx][2] + newSteps;
+                result.Elements[idx][6] = result.Elements[idx - 1][8];
+                result.Elements[idx][7] = result.Elements[idx - 1][8] + 1;
+                result.Elements[idx][8] = result.Elements[idx][5] + newSteps;
+                k = result.Elements[idx++][8] - 2;
+                pass = false;
+            }
+        }
+
+        using StreamWriter sw1 = new("output/linearPoints.txt"),
+            sw2 = new("output/points.txt"),
+            sw3 = new("output/elements.txt");
+
+        foreach (var point in result.Points)
+        {
+            sw1.WriteLine($"{point.X} {point.Y}");
+        }
+
+        foreach (var element in result.Elements)
+        {
+            foreach (var node in element)
+            {
+                sw3.Write(node + " ");
+            }
+
+            sw3.WriteLine();
+        }
+
+        return (result.Points, result.Elements.ToArray());
     }
 }
 
@@ -349,7 +415,7 @@ public readonly record struct MeshParameters
     }
 }
 
-public readonly record struct CurveMeshParameters : IParameters
+public class CurveMeshParameters : IParameters
 {
     [JsonIgnore] public double Angle { get; }
     public Point2D Center { get; }
@@ -357,6 +423,7 @@ public readonly record struct CurveMeshParameters : IParameters
     public double Radius2 { get; }
     public int Steps { get; }
     public int Splits { get; }
+    public int? RadiiCounts { get; set; }
 
     [JsonConstructor]
     public CurveMeshParameters(Point2D center, double radius1, double radius2, int steps, int splits)
@@ -382,7 +449,8 @@ public readonly record struct CurveMeshParameters : IParameters
         }
 
         using var sr = new StreamReader(jsonPath);
-        return JsonConvert.DeserializeObject<CurveMeshParameters>(sr.ReadToEnd());
+        return JsonConvert.DeserializeObject<CurveMeshParameters>(sr.ReadToEnd()) ??
+               throw new NullReferenceException("Incorrect mesh parameters!");
     }
 }
 

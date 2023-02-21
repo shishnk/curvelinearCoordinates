@@ -144,14 +144,46 @@ public class CurveLinearBoundaryHandler : IBoundaryHandler
 
     public IEnumerable<IBoundary> Process() // for now only Dirichlet
     {
-        var array = new DirichletBoundary[2 * _meshParameters!.Value.Steps];
+        var array = new DirichletBoundary[2 * _meshParameters!.Steps];
 
         for (int i = 0,
-             k = _meshParameters.Value.Steps,
-             j = _meshParameters.Value.Splits != 0
-                 ? 2 * _meshParameters.Value.Splits *
-                   _meshParameters!.Value.Steps
-                 : _meshParameters.Value.Steps;
+             k = _meshParameters!.Steps,
+             // j = _meshParameters.Value.Splits != 0
+             //     ? 2 * _meshParameters.Value.Splits *
+             //       _meshParameters!.Value.Steps
+             //     : _meshParameters.Value.Steps;
+             j = (_meshParameters.RadiiCounts!.Value - 1) * _meshParameters.Steps;
+             i < array.Length / 2;
+             i++, j++, k++)
+        {
+            array[i] = new(i, 0.0);
+            array[k] = new(j, 0.0);
+        }
+
+        return array;
+    }
+}
+
+public class CurveQuadraticBoundaryHandler : IBoundaryHandler
+{
+    private readonly BoundaryParameters? _parameters;
+    private readonly CurveMeshParameters? _meshParameters;
+
+    public CurveQuadraticBoundaryHandler(BoundaryParameters? parameters, IParameters? meshParameters)
+        => (_parameters, _meshParameters) = (parameters,
+            (CurveMeshParameters)(meshParameters ?? throw new ArgumentNullException(nameof(meshParameters))));
+
+    public IEnumerable<IBoundary> Process() // for now only Dirichlet
+    {
+        var array = new DirichletBoundary[4 * _meshParameters!.Steps];
+
+        for (int i = 0,
+             k = 2 * _meshParameters!.Steps,
+             // j = _meshParameters.Value.Splits != 0
+             //     ? 2 * _meshParameters.Value.Splits *
+             //       _meshParameters!.Value.Steps
+             //     : _meshParameters.Value.Steps;
+             j = 2 * (_meshParameters.RadiiCounts!.Value - 1) * _meshParameters.Steps;
              i < array.Length / 2;
              i++, j++, k++)
         {
