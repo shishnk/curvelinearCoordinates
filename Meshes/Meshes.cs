@@ -372,25 +372,6 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
             }
         }
 
-        using StreamWriter sw1 = new("output/linearPoints.txt"),
-            sw2 = new("output/points.txt"),
-            sw3 = new("output/elements.txt");
-
-        foreach (var point in result.Points)
-        {
-            sw1.WriteLine($"{point.X} {point.Y}");
-        }
-
-        foreach (var element in result.Elements)
-        {
-            foreach (var node in element)
-            {
-                sw3.Write(node + " ");
-            }
-
-            sw3.WriteLine();
-        }
-
         return (result.Points, result.Elements.ToArray());
     }
 }
