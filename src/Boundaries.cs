@@ -148,10 +148,6 @@ public class CurveLinearBoundaryHandler : IBoundaryHandler
 
         for (int i = 0,
              k = _meshParameters!.Steps,
-             // j = _meshParameters.Value.Splits != 0
-             //     ? 2 * _meshParameters.Value.Splits *
-             //       _meshParameters!.Value.Steps
-             //     : _meshParameters.Value.Steps;
              j = (_meshParameters.RadiiCounts!.Value - 1) * _meshParameters.Steps;
              i < array.Length / 2;
              i++, j++, k++)
@@ -179,10 +175,6 @@ public class CurveQuadraticBoundaryHandler : IBoundaryHandler
 
         for (int i = 0,
              k = 2 * _meshParameters!.Steps,
-             // j = _meshParameters.Value.Splits != 0
-             //     ? 2 * _meshParameters.Value.Splits *
-             //       _meshParameters!.Value.Steps
-             //     : _meshParameters.Value.Steps;
              j = 2 * (_meshParameters.RadiiCounts!.Value - 1) * _meshParameters.Steps;
              i < array.Length / 2;
              i++, j++, k++)
