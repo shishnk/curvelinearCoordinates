@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Rider folder idea
+.idea/
+
+# Python files
+.py
+
+# Output files
+output/

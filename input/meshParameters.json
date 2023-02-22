@@ -1,12 +1,6 @@
 ﻿{
-  "IntervalX": {
-    "Left border": 0.0,
-    "Right border": 2.0
-  },
+  "IntervalX": "[0.0, 2.0]",
   "SplitsX": 2,
-  "IntervalY": {
-    "Left border": 0.0,
-    "Right border": 2.0
-  },
+  "IntervalY": "[0.0, 2.0]",
   "SplitsY": 2
 }

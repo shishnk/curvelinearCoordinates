@@ -10,11 +10,53 @@
     <ItemGroup>
         <Using Include="Project" />
         <Using Include="Project.Meshes" />
+        <Using Include="Project.Tests" />
         <Using Include="Newtonsoft.Json" />
+        <Using Include="Newtonsoft.Json.Linq" />
+        <Using Include="System.Collections" />
+        <Using Include="System.Collections.Immutable" />
+        <Using Include="System.Numerics" />
+        <Using Include="System.Diagnostics" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.3-beta1" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3-beta1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="input\meshParameters.json">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="input\boundaryParameters.json">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Remove="bin\**" />
+        <None Update="input\curveMeshParameters.json">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\points.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\matrixAfter.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\matrixBefore.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\linearPoints.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\elements.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="bin\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="bin\**" />
     </ItemGroup>
 
 </Project>
