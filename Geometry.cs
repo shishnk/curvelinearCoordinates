@@ -15,7 +15,7 @@ public class Point2DJsonConverter : JsonConverter
         }
 
         if (Point2D.TryParse((string?)reader.Value ?? "", out var point)) return point;
-        throw new FormatException($"Can't parse({(string?)reader.Value}) as Vector2D!");
+        throw new FormatException($"Can't parse({(string?)reader.Value}) as Point2D!");
     }
 
     public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)

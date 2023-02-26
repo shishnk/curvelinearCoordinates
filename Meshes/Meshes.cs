@@ -15,7 +15,7 @@ public class RegularMeshCreator : IMeshCreator
 
 public abstract class MeshBuilder
 {
-    protected abstract int SizeElement { get; }
+    protected abstract int ElementSize { get; }
 
     public abstract (List<Point2D>, int[][]) Build(IParameters meshParameters);
 
@@ -34,7 +34,7 @@ public abstract class MeshBuilder
         var result = new
         {
             Points = new List<Point2D>(),
-            Elements = new int[parameters.SplitsX * parameters.SplitsY][].Select(_ => new int[SizeElement])
+            Elements = new int[parameters.SplitsX * parameters.SplitsY][].Select(_ => new int[ElementSize])
                 .ToArray(),
         };
 
@@ -85,7 +85,7 @@ public abstract class MeshBuilder
 
 public class LinearMeshBuilder : MeshBuilder
 {
-    protected override int SizeElement => 4;
+    protected override int ElementSize => 4;
 
     public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
     {
@@ -102,7 +102,7 @@ public class LinearMeshBuilder : MeshBuilder
 
 public class QuadraticMeshBuilder : MeshBuilder
 {
-    protected override int SizeElement => 9;
+    protected override int ElementSize => 9;
 
     public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
     {
@@ -182,7 +182,7 @@ public class QuadraticMeshBuilder : MeshBuilder
 
 public class CurveLinearMeshBuilder : MeshBuilder
 {
-    protected override int SizeElement => 4;
+    protected override int ElementSize => 4;
 
     public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
     {
@@ -209,7 +209,7 @@ public class CurveLinearMeshBuilder : MeshBuilder
         var result = new
         {
             Points = new List<Point2D>(),
-            Elements = new int[parameters.Steps * (radiiList.Count - 1)][].Select(_ => new int[SizeElement])
+            Elements = new int[parameters.Steps * (radiiList.Count - 1)][].Select(_ => new int[ElementSize])
                 .ToArray()
         };
 
@@ -281,7 +281,7 @@ public class CurveLinearMeshBuilder : MeshBuilder
 
 public class CurveQuadraticMeshBuilder : MeshBuilder
 {
-    protected override int SizeElement => 9;
+    protected override int ElementSize => 9;
 
     public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
     {
@@ -311,7 +311,7 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
         {
             Points = new List<Point2D>(),
             Elements = new int[parameters.Steps * (radiiList.Count / 2)][]
-                .Select(_ => new int[SizeElement])
+                .Select(_ => new int[ElementSize])
                 .ToArray()
         };
 
@@ -370,6 +370,13 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
                 k = result.Elements[idx++][8] - 2;
                 pass = false;
             }
+        }
+
+        using StreamWriter sw = new("output/points.txt");
+
+        foreach (var point in result.Points)
+        {
+            sw.WriteLine($"{point.X} {point.Y}");
         }
 
         return (result.Points, result.Elements.ToArray());
