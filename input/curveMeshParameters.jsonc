@@ -1,0 +1,8 @@
+{
+  "Center": "Point(0.0, 0.0)",
+  "Radius1": 1.0,
+  "Radius2": 3.0,
+  "Steps": 200,
+  "Splits": 4,
+  "Coeffs": [1.0, 1.0] // need minimum 1 split
+}

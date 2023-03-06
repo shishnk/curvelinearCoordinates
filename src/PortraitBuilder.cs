@@ -11,9 +11,9 @@ public static class PortraitBuilder
             connectivityList.Add(new());
         }
 
-        int localSize = mesh.Elements[0].Count;
+        int localSize = mesh.Elements[0].Nodes.Count();
 
-        foreach (var element in mesh.Elements.Select(list => list.OrderBy(node => node).ToArray()))
+        foreach (var element in mesh.Elements.Select(element => element.Nodes.OrderBy(node => node).ToArray()))
         {
             for (int i = 0; i < localSize - 1; i++)
             {

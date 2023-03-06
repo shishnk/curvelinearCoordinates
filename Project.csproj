@@ -31,7 +31,7 @@
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <None Remove="bin\**" />
-        <None Update="input\curveMeshParameters.json">
+        <None Update="input\curveMeshParameters.jsonc">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <None Update="output\points.txt">
@@ -47,6 +47,9 @@
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <None Update="output\elements.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="output\1.csv">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>

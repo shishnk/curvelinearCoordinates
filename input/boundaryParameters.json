@@ -1,6 +1,6 @@
 ﻿{
   "LeftBorder": 1,
   "RightBorder": 1,
-  "BottomBorder": 0,
-  "TopBorder": 0
+  "BottomBorder": 1,
+  "TopBorder": 1
 }

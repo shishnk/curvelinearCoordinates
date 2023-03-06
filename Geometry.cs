@@ -51,6 +51,10 @@ public readonly record struct Point2D(double X, double Y)
     public static Point2D operator *(Point2D p, double value) => new(p.X * value, p.Y * value);
 
     public static Point2D operator /(Point2D p, double value) => new(p.X / value, p.Y / value);
+
+    public static double operator *(Point2D a, Point2D b) => a.X * b.X + a.Y * b.Y;
+
+    public static implicit operator Point2D((double, double) tuple) => new(tuple.Item1, tuple.Item2);
 }
 
 public class IntervalJsonConverter : JsonConverter
@@ -107,4 +111,14 @@ public readonly record struct Rectangle(Point2D LeftBottom, Point2D RightTop)
 {
     public Point2D LeftTop { get; } = new(LeftBottom.X, RightTop.Y);
     public Point2D RightBottom { get; } = new(RightTop.X, LeftBottom.Y);
+}
+
+public class FiniteElement
+{
+    public IReadOnlyList<int> Nodes { get; }
+    public int AreaNumber { get; }
+    public double Lambda { get; }
+
+    public FiniteElement(IReadOnlyList<int> nodes, int areaNumber, double lambda)
+        => (Nodes, AreaNumber, Lambda) = (nodes, areaNumber, lambda);
 }

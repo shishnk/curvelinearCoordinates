@@ -52,31 +52,31 @@ public class SolverFem
     {
         Initialize();
         AssemblySystem();
-        _matrixAssembler.GlobalMatrix.PrintDense("output/matrixBefore.txt");
+        // _matrixAssembler.GlobalMatrix!.PrintDense("output/matrixBefore.txt");
         AccountingDirichletBoundary();
 
-        _matrixAssembler.GlobalMatrix.PrintDense("output/matrixAfter.txt");
+        // _matrixAssembler.GlobalMatrix.PrintDense("output/matrixAfter.txt");
 
         _iterativeSolver.SetMatrix(_matrixAssembler.GlobalMatrix!);
         _iterativeSolver.SetVector(_globalVector);
         _iterativeSolver.Compute();
 
-        var exact = new double[_mesh.Points.Count];
-
-        for (int i = 0; i < exact.Length; i++)
-        {
-            exact[i] = _test.U(_mesh.Points[i]);
-        }
-
-        var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v2, v1));
-
-        foreach (var (v1, v2) in result)
-        {
-            Console.WriteLine($"{v1} ------------ {v2} ");
-        }
-
-        Console.WriteLine("---------------------------");
-
+        // var exact = new double[_mesh.Points.Count];
+        //
+        // for (int i = 0; i < exact.Length; i++)
+        // {
+        //     exact[i] = _test.U(_mesh.Points[i]);
+        // }
+        //
+        // var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v2, v1));
+        //
+        // foreach (var (v1, v2) in result)
+        // {
+        //     Console.WriteLine($"{v1} ------------ {v2} ");
+        // }
+        //
+        // Console.WriteLine("---------------------------");
+        //
         CalculateError();
     }
 
@@ -104,11 +104,12 @@ public class SolverFem
 
             for (int i = 0; i < _matrixAssembler.BasisSize; i++)
             {
-                _globalVector[element[i]] += _localVector[i];
+                _globalVector[element.Nodes[i]] += _localVector[i];
 
                 for (int j = 0; j < _matrixAssembler.BasisSize; j++)
                 {
-                    _matrixAssembler.FillGlobalMatrix(element[i], element[j], _matrixAssembler.StiffnessMatrix[i, j]);
+                    _matrixAssembler.FillGlobalMatrix(element.Nodes[i], element.Nodes[j],
+                        _matrixAssembler.StiffnessMatrix[i, j]);
                 }
             }
         }
@@ -122,7 +123,8 @@ public class SolverFem
         {
             for (int j = 0; j < _matrixAssembler.BasisSize; j++)
             {
-                _localVector[i] += _matrixAssembler.MassMatrix[i, j] * _test.F(_mesh.Points[_mesh.Elements[ielem][j]]);
+                _localVector[i] += _matrixAssembler.MassMatrix[i, j] *
+                                   _test.F(_mesh.Points[_mesh.Elements[ielem].Nodes[j]]);
             }
         }
     }
@@ -136,14 +138,16 @@ public class SolverFem
 
         for (int i = 0; i < boundariesArray.Length; i++)
         {
-            boundariesArray[i].Value = _test.U(_mesh.Points[boundariesArray[i].Node]);
             checkBc[boundariesArray[i].Node] = i;
+            boundariesArray[i].Value = _test.U(_mesh.Points[boundariesArray[i].Node]);
         }
 
-        // for (int i = 0; i < arrayBoundaries.Length; i++)
+        // for (int i = 0, k = boundariesArray.Length - 1;
+        //      i < boundariesArray.Length / 2;
+        //      i++, k--)
         // {
-        //     _matrixAssembler.GlobalMatrix.Di[arrayBoundaries[i].Node] = 1E+32;
-        //     _globalVector[arrayBoundaries[i].Node] = 1E+32 * arrayBoundaries[i].Value;
+        //     boundariesArray[i].Value = 10.0;
+        //     boundariesArray[k].Value = 0.0;
         // }
 
         for (int i = 0; i < _mesh.Points.Count; i++)
@@ -196,6 +200,21 @@ public class SolverFem
         sum = Math.Sqrt(sum / _mesh.Points.Count);
 
         Console.WriteLine($"rms = {sum}");
+
+        // using var sw = new StreamWriter("output/3.csv");
+        //
+        // for (int i = 0; i < error.Length; i++)
+        // {
+        //     if (i == 0)
+        //     {
+        //         sw.WriteLine("$i$, $u_i^*$, $u_i$, $|u^* - u|$, Погрешность");
+        //         sw.WriteLine(
+        //             $"{i}, {_test.U(_mesh.Points[i])}, {_iterativeSolver.Solution!.Value[i]}, {error[i]}, {sum}");
+        //         continue;
+        //     }
+        //
+        //     sw.WriteLine($"{i}, {_test.U(_mesh.Points[i])}, {_iterativeSolver.Solution!.Value[i]}, {error[i]},");
+        // }
     }
 
     public static SolverFemBuilder CreateBuilder() => new();

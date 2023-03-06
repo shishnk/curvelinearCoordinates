@@ -135,4 +135,19 @@ public class Matrix
 
         return resultMatrix;
     }
+
+    public static Vector<double> operator *(Matrix matrix, Vector<double> vector)
+    {
+        var result = new Vector<double>(matrix.Size);
+
+        for (int i = 0; i < matrix.Size; i++)
+        {
+            for (int j = 0; j < matrix.Size; j++)
+            {
+                result[i] += matrix[i, j] * vector[j];
+            }
+        }
+
+        return result;
+    }
 }

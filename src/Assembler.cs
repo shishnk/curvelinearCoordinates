@@ -7,17 +7,19 @@ public abstract class BaseMatrixAssembler
     protected readonly Integration _integrator;
     protected Matrix[]? _baseStiffnessMatrix;
     protected Matrix? _baseMassMatrix;
+    protected readonly bool _useLinearFormFunc;
 
     public SparseMatrix? GlobalMatrix { get; set; } // need initialize with portrait builder 
     public Matrix StiffnessMatrix { get; }
     public Matrix MassMatrix { get; }
     public int BasisSize => _basis.Size;
 
-    protected BaseMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh)
+    protected BaseMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh, bool useLinearFormFunc = false)
     {
         _basis = basis;
         _integrator = integrator;
         _mesh = mesh;
+        _useLinearFormFunc = useLinearFormFunc;
         StiffnessMatrix = new(_basis.Size);
         MassMatrix = new(_basis.Size);
     }
@@ -49,15 +51,16 @@ public abstract class BaseMatrixAssembler
 
 public class BiMatrixAssembler : BaseMatrixAssembler
 {
-    public BiMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh) : base(basis, integrator, mesh)
+    public BiMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh, bool useLinearFormFunc = false) :
+        base(basis, integrator, mesh, useLinearFormFunc)
     {
     }
 
     public override void BuildLocalMatrices(int ielem)
     {
         var element = _mesh.Elements[ielem];
-        var bPoint = _mesh.Points[element[0]];
-        var ePoint = _mesh.Points[element[^1]];
+        var bPoint = _mesh.Points[element.Nodes[0]];
+        var ePoint = _mesh.Points[element.Nodes[^1]];
 
         double hx = ePoint.X - bPoint.X;
         double hy = ePoint.Y - bPoint.Y;
@@ -126,9 +129,10 @@ public class BiMatrixAssembler : BaseMatrixAssembler
 
 public class CurveMatrixAssembler : BaseMatrixAssembler // maybe rename the class
 {
-    public CurveMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh) : base(basis, integrator, mesh)
+    public CurveMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh, bool useLinearFormFunc = false) :
+        base(basis, integrator, mesh, useLinearFormFunc)
     {
-        _baseStiffnessMatrix = new Matrix[] { new(_basis.Size), new(_basis.Size) };
+        _baseStiffnessMatrix = new Matrix[] { new(_basis.Size) };
         _baseMassMatrix = new(_basis.Size);
     }
 
@@ -148,12 +152,12 @@ public class CurveMatrixAssembler : BaseMatrixAssembler // maybe rename the clas
                     var dxFi2 = _basis.GetDPsi(j1, 0, p);
                     var dyFi1 = _basis.GetDPsi(i1, 1, p);
                     var dyFi2 = _basis.GetDPsi(j1, 1, p);
-                    var calculates = CalculateJacobian(ielem, p);
 
-                    return ((calculates.Reverse[0, 0] * dxFi1 + calculates.Reverse[0, 1] * dyFi1) *
-                            (calculates.Reverse[0, 0] * dxFi2 + calculates.Reverse[0, 1] * dyFi2) +
-                            (calculates.Reverse[1, 0] * dxFi1 + calculates.Reverse[1, 1] * dyFi1) *
-                            (calculates.Reverse[1, 0] * dxFi2 + calculates.Reverse[1, 1] * dyFi2)) *
+                    var calculates = CalculateJacobian(ielem, p);
+                    var vector1 = new Vector<double>(calculates.Reverse.Size) { new[] { dxFi1, dyFi1 } };
+                    var vector2 = new Vector<double>(calculates.Reverse.Size) { new[] { dxFi2, dyFi2 } };
+
+                    return calculates.Reverse * vector1 * (calculates.Reverse * vector2) *
                            Math.Abs(calculates.Determinant);
                 };
 
@@ -177,7 +181,8 @@ public class CurveMatrixAssembler : BaseMatrixAssembler // maybe rename the clas
         {
             for (int j = 0; j <= i; j++)
             {
-                StiffnessMatrix[i, j] = StiffnessMatrix[j, i] = _baseStiffnessMatrix![0][i, j];
+                StiffnessMatrix[i, j] =
+                    StiffnessMatrix[j, i] = _mesh.Elements[ielem].Lambda * _baseStiffnessMatrix![0][i, j];
             }
         }
 
@@ -196,17 +201,29 @@ public class CurveMatrixAssembler : BaseMatrixAssembler // maybe rename the clas
         var dy = new double[2];
 
         var element = _mesh.Elements[ielem];
+        var basis = _basis;
 
-        for (int i = 0; i < _basis.Size; i++)
+        if (_useLinearFormFunc && _basis is not LinearBasis)
+        {
+            element = new(new[]
+            {
+                _mesh.Elements[ielem].Nodes[0], _mesh.Elements[ielem].Nodes[2],
+                _mesh.Elements[ielem].Nodes[6], _mesh.Elements[ielem].Nodes[8]
+            }, 0, 1.0);
+
+            basis = new LinearBasis();
+        }
+
+        for (int i = 0; i < basis.Size; i++)
         {
             for (int k = 0; k < 2; k++)
             {
-                dx[k] += _basis.GetDPsi(i, k, point) * _mesh.Points[element[i]].X;
-                dy[k] += _basis.GetDPsi(i, k, point) * _mesh.Points[element[i]].Y;
+                dx[k] += basis.GetDPsi(i, k, point) * _mesh.Points[element.Nodes[i]].X;
+                dy[k] += basis.GetDPsi(i, k, point) * _mesh.Points[element.Nodes[i]].Y;
             }
         }
 
-        var jacobian = dx[0] * dy[1] - dx[1] * dy[0];
+        var determinant = dx[0] * dy[1] - dx[1] * dy[0];
 
         var reverse = new Matrix(2)
         {
@@ -216,6 +233,6 @@ public class CurveMatrixAssembler : BaseMatrixAssembler // maybe rename the clas
             [1, 1] = dx[0]
         };
 
-        return (jacobian, 1.0 / jacobian * reverse);
+        return (determinant, 1.0 / determinant * reverse);
     }
 }

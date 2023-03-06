@@ -17,9 +17,9 @@ public abstract class MeshBuilder
 {
     protected abstract int ElementSize { get; }
 
-    public abstract (List<Point2D>, int[][]) Build(IParameters meshParameters);
+    public abstract (List<Point2D>, FiniteElement[]) Build(IParameters meshParameters);
 
-    protected (List<Point2D>, int[][]) BaseBuild(IParameters meshParameters)
+    protected (List<Point2D>, FiniteElement[]) BaseBuild(IParameters meshParameters)
     {
         if (meshParameters is not MeshParameters parameters)
         {
@@ -34,8 +34,7 @@ public abstract class MeshBuilder
         var result = new
         {
             Points = new List<Point2D>(),
-            Elements = new int[parameters.SplitsX * parameters.SplitsY][].Select(_ => new int[ElementSize])
-                .ToArray(),
+            Elements = new FiniteElement[parameters.SplitsX * parameters.SplitsY]
         };
 
         double hx = parameters.IntervalX.Length / parameters.SplitsX;
@@ -67,19 +66,43 @@ public abstract class MeshBuilder
 
         int nx = parameters.SplitsX + 1;
         int index = 0;
+        var nodes = new int[ElementSize];
 
         for (int j = 0; j < parameters.SplitsY; j++)
         {
             for (int i = 0; i < parameters.SplitsX; i++)
             {
-                result.Elements[index][0] = i + j * nx;
-                result.Elements[index][1] = i + 1 + j * nx;
-                result.Elements[index][2] = i + (j + 1) * nx;
-                result.Elements[index++][3] = i + 1 + (j + 1) * nx;
+                nodes[0] = i + j * nx;
+                nodes[1] = i + 1 + j * nx;
+                nodes[2] = i + (j + 1) * nx;
+                nodes[3] = i + 1 + (j + 1) * nx;
+
+                result.Elements[index++] = new(nodes.ToArray(), 0, 1.0);
             }
         }
 
         return (result.Points, result.Elements);
+    }
+
+    protected static void WriteToFile(List<Point2D> points, FiniteElement[] elements)
+    {
+        using StreamWriter sw = new("output/points.txt"), sw1 = new("output/elements.txt");
+
+        foreach (var point in points)
+        {
+            sw.WriteLine($"{point.X} {point.Y}");
+        }
+
+        foreach (var element in elements)
+        {
+            foreach (var node in element.Nodes)
+            {
+                sw1.Write(node + " ");
+            }
+
+            sw1.Write(element.AreaNumber);
+            sw1.WriteLine();
+        }
     }
 }
 
@@ -87,7 +110,7 @@ public class LinearMeshBuilder : MeshBuilder
 {
     protected override int ElementSize => 4;
 
-    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
+    public override (List<Point2D>, FiniteElement[]) Build(IParameters meshParameters)
     {
         if (meshParameters is not MeshParameters parameters)
         {
@@ -104,14 +127,14 @@ public class QuadraticMeshBuilder : MeshBuilder
 {
     protected override int ElementSize => 9;
 
-    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
+    public override (List<Point2D>, FiniteElement[]) Build(IParameters meshParameters)
     {
         if (meshParameters is not MeshParameters parameters)
         {
             throw new ArgumentNullException(nameof(parameters), "Parameters mesh is null!");
         }
 
-        (List<Point2D> Points, int[][] Elements) result = BaseBuild(meshParameters);
+        (List<Point2D> Points, FiniteElement[] Elements) result = BaseBuild(meshParameters);
         var pointsX = new double[2 * parameters.SplitsX + 1];
         var pointsY = new double[2 * parameters.SplitsY + 1];
         var vertices = new Point2D[9];
@@ -121,10 +144,10 @@ public class QuadraticMeshBuilder : MeshBuilder
 
         foreach (var ielem in result.Elements)
         {
-            var v1 = result.Points[ielem[0]];
-            var v2 = result.Points[ielem[1]];
-            var v3 = result.Points[ielem[2]];
-            var v4 = result.Points[ielem[3]];
+            var v1 = result.Points[ielem.Nodes[0]];
+            var v2 = result.Points[ielem.Nodes[1]];
+            var v3 = result.Points[ielem.Nodes[2]];
+            var v4 = result.Points[ielem.Nodes[3]];
 
             RecalculatePoints(v1, v2, v3, v4);
 
@@ -146,20 +169,23 @@ public class QuadraticMeshBuilder : MeshBuilder
 
         var nx = 2 * parameters.SplitsX + 1;
         var index = 0;
+        var nodes = new int[ElementSize];
 
         for (int j = 0; j < parameters.SplitsY; j++)
         {
             for (int i = 0; i < parameters.SplitsX; i++)
             {
-                result.Elements[index][0] = i + j * 2 * nx + i;
-                result.Elements[index][1] = i + 1 + 2 * j * nx + i;
-                result.Elements[index][2] = i + 2 + 2 * j * nx + i;
-                result.Elements[index][3] = i + nx + 2 * j * nx + i;
-                result.Elements[index][4] = i + nx + 1 + 2 * j * nx + i;
-                result.Elements[index][5] = i + nx + 2 + 2 * j * nx + i;
-                result.Elements[index][6] = i + 2 * nx + 2 * j * nx + i;
-                result.Elements[index][7] = i + 2 * nx + 1 + 2 * j * nx + i;
-                result.Elements[index++][8] = i + 2 * nx + 2 + 2 * j * nx + i;
+                nodes[0] = i + j * 2 * nx + i;
+                nodes[1] = i + 1 + 2 * j * nx + i;
+                nodes[2] = i + 2 + 2 * j * nx + i;
+                nodes[3] = i + nx + 2 * j * nx + i;
+                nodes[4] = i + nx + 1 + 2 * j * nx + i;
+                nodes[5] = i + nx + 2 + 2 * j * nx + i;
+                nodes[6] = i + 2 * nx + 2 * j * nx + i;
+                nodes[7] = i + 2 * nx + 1 + 2 * j * nx + i;
+                nodes[8] = i + 2 * nx + 2 + 2 * j * nx + i;
+
+                result.Elements[index++] = new(nodes.ToArray(), 0, 1.0);
             }
         }
 
@@ -184,7 +210,7 @@ public class CurveLinearMeshBuilder : MeshBuilder
 {
     protected override int ElementSize => 4;
 
-    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
+    public override (List<Point2D>, FiniteElement[]) Build(IParameters meshParameters)
     {
         if (meshParameters is not CurveMeshParameters parameters)
         {
@@ -209,8 +235,7 @@ public class CurveLinearMeshBuilder : MeshBuilder
         var result = new
         {
             Points = new List<Point2D>(),
-            Elements = new int[parameters.Steps * (radiiList.Count - 1)][].Select(_ => new int[ElementSize])
-                .ToArray()
+            Elements = new FiniteElement[parameters.Steps * (radiiList.Count - 1)]
         };
 
         foreach (var radius in radiiList)
@@ -230,16 +255,21 @@ public class CurveLinearMeshBuilder : MeshBuilder
         var pass = false;
         var step = 0;
         count = 0;
+        var nodes = new int[ElementSize];
+        var numberArea = 0;
 
         for (int i = 0; i < (radiiList.Count - 1) * parameters.Steps; i++)
         {
             if (!pass)
             {
-                result.Elements[idx][0] = i;
-                result.Elements[idx][1] = i + 1;
-                result.Elements[idx][2] = result.Elements[idx][0] + parameters.Steps;
-                result.Elements[idx][3] = result.Elements[idx++][1] + parameters.Steps;
+                nodes[0] = i;
+                nodes[1] = i + 1;
+                nodes[2] = nodes[0] + parameters.Steps;
+                nodes[3] = nodes[1] + parameters.Steps;
                 step++;
+
+                result.Elements[idx++] =
+                    new(nodes.ToArray(), numberArea, parameters.Coeffs[numberArea]);
 
                 if (step != parameters.Steps - 1) continue;
                 pass = true;
@@ -247,33 +277,28 @@ public class CurveLinearMeshBuilder : MeshBuilder
             }
             else
             {
-                result.Elements[idx][0] = count * parameters.Steps;
-                result.Elements[idx][1] = result.Elements[idx - 1][1];
-                result.Elements[idx][2] = result.Elements[idx - 1][1] + 1;
+                nodes[0] = count * parameters.Steps;
+                nodes[1] = result.Elements[idx - 1].Nodes[1];
+                nodes[2] = result.Elements[idx - 1].Nodes[1] + 1;
                 count++;
-                result.Elements[idx++][3] = (count + 1) * parameters.Steps - 1;
+                nodes[3] = (count + 1) * parameters.Steps - 1;
                 pass = false;
+
+                var checkPoint = result.Points[nodes[2]];
+                var mediumRadius =
+                    (parameters.Center.X + parameters.Radius1 + parameters.Center.X + parameters.Radius2) / 2.0;
+
+                result.Elements[idx++] =
+                    new(nodes.ToArray(), numberArea, parameters.Coeffs[numberArea]);
+
+                if (checkPoint.X <= mediumRadius && checkPoint.X >= parameters.Center.X + parameters.Radius1)
+                {
+                    numberArea = 1;
+                }
             }
         }
 
-        using StreamWriter sw1 = new("output/linearPoints.txt"),
-            sw2 = new("output/points.txt"),
-            sw3 = new("output/elements.txt");
-
-        foreach (var point in result.Points)
-        {
-            sw1.WriteLine($"{point.X} {point.Y}");
-        }
-
-        foreach (var element in result.Elements)
-        {
-            foreach (var node in element)
-            {
-                sw3.Write(node + " ");
-            }
-
-            sw3.WriteLine();
-        }
+        WriteToFile(result.Points, result.Elements);
 
         return (result.Points, result.Elements.ToArray());
     }
@@ -283,7 +308,7 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
 {
     protected override int ElementSize => 9;
 
-    public override (List<Point2D>, int[][]) Build(IParameters meshParameters)
+    public override (List<Point2D>, FiniteElement[]) Build(IParameters meshParameters)
     {
         if (meshParameters is not CurveMeshParameters parameters)
         {
@@ -310,9 +335,7 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
         var result = new
         {
             Points = new List<Point2D>(),
-            Elements = new int[parameters.Steps * (radiiList.Count / 2)][]
-                .Select(_ => new int[ElementSize])
-                .ToArray()
+            Elements = new FiniteElement[parameters.Steps * (radiiList.Count / 2)]
         };
 
         int newSteps = parameters.Steps * 2;
@@ -320,10 +343,16 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
 
         foreach (var radius in radiiList)
         {
+            var extraDistance = RecalculateExtraDistance(radius);
+
             for (int i = 0; i < newSteps; i++)
             {
-                double newX = radius * Math.Cos(newAngle * i) + parameters.Center.X;
-                double newY = radius * Math.Sin(newAngle * i) + parameters.Center.Y;
+                double value = 0.0;
+
+                if (i % 2 != 0) value = extraDistance;
+
+                double newX = (radius - value) * Math.Cos(newAngle * i) + parameters.Center.X;
+                double newY = (radius - value) * Math.Sin(newAngle * i) + parameters.Center.Y;
 
                 result.Points.Add(new(newX, newY));
             }
@@ -335,21 +364,25 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
         var pass = false;
         var step = 0;
         count = 0;
+        var nodes = new int[ElementSize];
+        var numberArea = 0;
 
         for (int i = 0, k = 0; i < parameters.Steps * (radiiList.Count / 2); i++, k += 2)
         {
             if (!pass)
             {
-                result.Elements[idx][0] = k;
-                result.Elements[idx][1] = k + 1;
-                result.Elements[idx][2] = k + 2;
-                result.Elements[idx][3] = result.Elements[idx][0] + newSteps;
-                result.Elements[idx][4] = result.Elements[idx][1] + newSteps;
-                result.Elements[idx][5] = result.Elements[idx][2] + newSteps;
-                result.Elements[idx][6] = result.Elements[idx][0] + 2 * newSteps;
-                result.Elements[idx][7] = result.Elements[idx][1] + 2 * newSteps;
-                result.Elements[idx][8] = result.Elements[idx++][2] + 2 * newSteps;
+                nodes[0] = k;
+                nodes[1] = k + 1;
+                nodes[2] = k + 2;
+                nodes[3] = nodes[0] + newSteps;
+                nodes[4] = nodes[1] + newSteps;
+                nodes[5] = nodes[2] + newSteps;
+                nodes[6] = nodes[0] + 2 * newSteps;
+                nodes[7] = nodes[1] + 2 * newSteps;
+                nodes[8] = nodes[2] + 2 * newSteps;
                 step++;
+
+                result.Elements[idx++] = new(nodes.ToArray(), numberArea, parameters.Coeffs[numberArea]);
 
                 if (step != parameters.Steps - 1) continue;
                 pass = true;
@@ -357,29 +390,49 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
             }
             else
             {
-                result.Elements[idx][0] = result.Elements[idx - 1][2];
-                result.Elements[idx][1] = result.Elements[idx][0] + 1;
-                result.Elements[idx][2] = count * newSteps;
+                nodes[0] = result.Elements[idx - 1].Nodes[2];
+                nodes[1] = nodes[0] + 1;
+                nodes[2] = count * newSteps;
                 count += 2;
-                result.Elements[idx][3] = result.Elements[idx - 1][5];
-                result.Elements[idx][4] = result.Elements[idx - 1][5] + 1;
-                result.Elements[idx][5] = result.Elements[idx][2] + newSteps;
-                result.Elements[idx][6] = result.Elements[idx - 1][8];
-                result.Elements[idx][7] = result.Elements[idx - 1][8] + 1;
-                result.Elements[idx][8] = result.Elements[idx][5] + newSteps;
-                k = result.Elements[idx++][8] - 2;
+                nodes[3] = result.Elements[idx - 1].Nodes[5];
+                nodes[4] = result.Elements[idx - 1].Nodes[5] + 1;
+                nodes[5] = nodes[2] + newSteps;
+                nodes[6] = result.Elements[idx - 1].Nodes[8];
+                nodes[7] = result.Elements[idx - 1].Nodes[8] + 1;
+                nodes[8] = nodes[5] + newSteps;
+                k = nodes[8] - 2;
                 pass = false;
+
+                var checkPoint = result.Points[nodes[8]];
+                var mediumRadius =
+                    (parameters.Center.X + parameters.Radius1 + parameters.Center.X + parameters.Radius2) / 2.0;
+
+                result.Elements[idx++] =
+                    new(nodes.ToArray(), numberArea, parameters.Coeffs[numberArea]);
+
+                if (checkPoint.X <= mediumRadius && checkPoint.X >= parameters.Center.X + parameters.Radius1)
+                {
+                    numberArea = 1;
+                }
             }
         }
 
-        using StreamWriter sw = new("output/points.txt");
-
-        foreach (var point in result.Points)
-        {
-            sw.WriteLine($"{point.X} {point.Y}");
-        }
+        WriteToFile(result.Points, result.Elements);
 
         return (result.Points, result.Elements.ToArray());
+
+        double RecalculateExtraDistance(double radius)
+        {
+            var mediumPoint = ((radius * Math.Cos(0.0) + parameters.Center.X,
+                                   radius * Math.Sin(0.0) + parameters.Center.Y) +
+                               new Point2D(radius * Math.Cos(2 * newAngle) + parameters.Center.X,
+                                   radius * Math.Sin(2 * newAngle) + parameters.Center.Y)) / 2.0;
+
+            var extraPoint = (radius * Math.Cos(newAngle) + parameters.Center.X,
+                radius * Math.Sin(newAngle) + parameters.Center.Y);
+
+            return Math.Sqrt((extraPoint - mediumPoint) * (extraPoint - mediumPoint));
+        }
     }
 }
 
@@ -411,10 +464,11 @@ public class CurveMeshParameters : IParameters
     public double Radius2 { get; }
     public int Steps { get; }
     public int Splits { get; }
+    public double[] Coeffs { get; }
     public int? RadiiCounts { get; set; }
 
     [JsonConstructor]
-    public CurveMeshParameters(Point2D center, double radius1, double radius2, int steps, int splits)
+    public CurveMeshParameters(Point2D center, double radius1, double radius2, int steps, int splits, double[] coeffs)
     {
         Center = center;
         Radius1 = radius1;
@@ -422,6 +476,7 @@ public class CurveMeshParameters : IParameters
         Steps = steps;
         Angle = 2.0 * Math.PI / Steps;
         Splits = splits;
+        Coeffs = coeffs;
 
         if (radius1 <= 0 || radius2 <= 0 || Math.Abs(radius1 - radius2) < 1E-07)
         {
@@ -445,16 +500,16 @@ public class CurveMeshParameters : IParameters
 public interface IBaseMesh
 {
     IReadOnlyList<Point2D> Points { get; }
-    IReadOnlyList<IReadOnlyList<int>> Elements { get; }
+    IReadOnlyList<FiniteElement> Elements { get; }
 }
 
 public class RegularMesh : IBaseMesh
 {
     private readonly List<Point2D> _points;
-    private readonly int[][] _elements;
+    private readonly FiniteElement[] _elements;
 
     public IReadOnlyList<Point2D> Points => _points;
-    public IReadOnlyList<IReadOnlyList<int>> Elements => _elements;
+    public IReadOnlyList<FiniteElement> Elements => _elements;
 
     public RegularMesh(IParameters meshParameters, MeshBuilder meshBuilder)
         => (_points, _elements) = meshBuilder.Build(meshParameters);

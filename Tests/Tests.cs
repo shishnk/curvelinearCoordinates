@@ -16,9 +16,9 @@ public class Test1 : ITest
 
 public class Test2 : ITest
 {
-    public double U(Point2D point) => point.X * point.X + point.Y;
+    public double U(Point2D point) => point.X * point.X + point.Y * point.Y;
 
-    public double F(Point2D point) => -2.0;
+    public double F(Point2D point) => -4.0;
 }
 
 public class Test3 : ITest
@@ -57,3 +57,16 @@ public class Test7 : ITest
     public double F(Point2D point) => -6.0 * (point.X + 1) * point.Y * point.Y * point.Y -
                                       6.0 * point.Y * (point.X + 1) * (point.X + 1) * (point.X + 1);
 }
+
+// public class Test8 : ITest
+// {
+//     public double U(Point2D point, int areaNumber) =>
+//         areaNumber == 0
+//             ? 10.0 / 17.0 * (point.X * point.X + point.Y * point.Y) * (point.X * point.X + point.Y * point.Y) -
+//               140.0 / 17.0
+//             : 20.0 / 17.0 * (point.X * point.X + point.Y * point.Y) * (point.X * point.X + point.Y * point.Y);
+//
+//     public double F(Point2D point) =>
+//         -80.0 / 17.0 * (point.X * point.X + point.Y * point.Y) - 160.0 / 17.0 * point.X * point.X -
+//         80.0 / 17.0 * (point.X * point.X + point.Y * point.Y) - 160.0 / 17.0 * point.Y * point.Y;
+// }
