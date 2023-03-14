@@ -9,7 +9,7 @@ SolverFem problem = SolverFem.CreateBuilder()
     .SetTest(new Test2())
     .SetSolverSlae(new CGMCholesky(1000, 1E-16))
     .SetAssembler(new CurveMatrixAssembler(new QuadraticBasis(), new(Quadratures.SegmentGaussOrder5()), mesh,
-        true))
+        false))
     .SetBoundaries(boundaryHandler.Process());
 
 problem.Compute();

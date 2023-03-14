@@ -34,7 +34,7 @@ public readonly record struct Point2D(double X, double Y)
     public static bool TryParse(string line, out Point2D point)
     {
         var words = line.Split(new[] { ' ', ',', '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length != 3 || !float.TryParse(words[1], out var x) || !float.TryParse(words[2], out var y))
+        if (words.Length != 3 || !double.TryParse(words[1], out var x) || !double.TryParse(words[2], out var y))
         {
             point = default;
             return false;

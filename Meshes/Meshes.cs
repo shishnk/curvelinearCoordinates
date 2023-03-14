@@ -343,16 +343,17 @@ public class CurveQuadraticMeshBuilder : MeshBuilder
 
         foreach (var radius in radiiList)
         {
-            var extraDistance = RecalculateExtraDistance(radius);
+            // var extraDistance = RecalculateExtraDistance(radius);
+            // var extraDistance = 0.0;
 
             for (int i = 0; i < newSteps; i++)
             {
-                double value = 0.0;
+                // double value = 0.0;
 
-                if (i % 2 != 0) value = extraDistance;
+                // if (i % 2 != 0) value = extraDistance;
 
-                double newX = (radius - value) * Math.Cos(newAngle * i) + parameters.Center.X;
-                double newY = (radius - value) * Math.Sin(newAngle * i) + parameters.Center.Y;
+                double newX = radius * Math.Cos(newAngle * i) + parameters.Center.X;
+                double newY = radius * Math.Sin(newAngle * i) + parameters.Center.Y;
 
                 result.Points.Add(new(newX, newY));
             }

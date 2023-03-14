@@ -146,7 +146,7 @@ public class CurveMatrixAssembler : BaseMatrixAssembler // maybe rename the clas
             {
                 var i1 = i;
                 var j1 = j;
-                Func<Point2D, double> function = p =>
+                var function = double(Point2D p) =>
                 {
                     var dxFi1 = _basis.GetDPsi(i1, 0, p);
                     var dxFi2 = _basis.GetDPsi(j1, 0, p);

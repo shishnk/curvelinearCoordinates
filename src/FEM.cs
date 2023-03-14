@@ -61,14 +61,31 @@ public class SolverFem
         _iterativeSolver.SetVector(_globalVector);
         _iterativeSolver.Compute();
 
-        // var exact = new double[_mesh.Points.Count];
+        var exact = new double[_mesh.Points.Count];
+        
+        for (int i = 0; i < exact.Length; i++)
+        {
+            exact[i] = _test.U(_mesh.Points[i]);
+        }
+        
+        var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v2, v1));
+        
+        foreach (var (v1, v2) in result)
+        {
+            Console.WriteLine($"{v1} ------------ {v2} ");
+        }
+        
+        Console.WriteLine("---------------------------");
+
+        // var exact = (from element in _mesh.Elements
+        //     from node in element.Nodes
+        //     select (_test.U(_mesh.Points[node], element.AreaNumber), node)).ToList();
         //
-        // for (int i = 0; i < exact.Length; i++)
-        // {
-        //     exact[i] = _test.U(_mesh.Points[i]);
-        // }
+        // exact = exact.DistinctBy(tuple => tuple.Item2).OrderBy(tuple => tuple.Item2).ToList();
         //
-        // var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v2, v1));
+        // var approx = _iterativeSolver.Solution!.Value.ToList();
+        //
+        // var result = exact.Zip(approx, (v1, v2) => (v2, v1.Item1));
         //
         // foreach (var (v1, v2) in result)
         // {
@@ -76,8 +93,9 @@ public class SolverFem
         // }
         //
         // Console.WriteLine("---------------------------");
-        //
+
         CalculateError();
+        // CalculateErrorWithBreaking(approx, exact.Select(tuple => tuple.Item1).ToList());
     }
 
     private void Initialize()
@@ -201,21 +219,44 @@ public class SolverFem
 
         Console.WriteLine($"rms = {sum}");
 
-        // using var sw = new StreamWriter("output/3.csv");
-        //
-        // for (int i = 0; i < error.Length; i++)
-        // {
-        //     if (i == 0)
-        //     {
-        //         sw.WriteLine("$i$, $u_i^*$, $u_i$, $|u^* - u|$, Погрешность");
-        //         sw.WriteLine(
-        //             $"{i}, {_test.U(_mesh.Points[i])}, {_iterativeSolver.Solution!.Value[i]}, {error[i]}, {sum}");
-        //         continue;
-        //     }
-        //
-        //     sw.WriteLine($"{i}, {_test.U(_mesh.Points[i])}, {_iterativeSolver.Solution!.Value[i]}, {error[i]},");
-        // }
+        using var sw = new StreamWriter("output/3.csv");
+
+        for (int i = 0; i < error.Length; i++)
+        {
+            if (i == 0)
+            {
+                sw.WriteLine("$i$, $u_i^*$, $u_i$, $|u^* - u|$, Погрешность");
+                sw.WriteLine(
+                    $"{i}, {_test.U(_mesh.Points[i])}, {_iterativeSolver.Solution!.Value[i]}, {error[i]}, {sum}");
+                continue;
+            }
+
+            sw.WriteLine($"{i}, {_test.U(_mesh.Points[i])}, {_iterativeSolver.Solution!.Value[i]}, {error[i]},");
+        }
     }
 
-    public static SolverFemBuilder CreateBuilder() => new();
+    private void CalculateErrorWithBreaking(IReadOnlyList<double> approx, IReadOnlyList<double> exact)
+    {
+        var error = new double[approx.Count];
+
+        for (int i = 0; i < error.Length; i++)
+        {
+            error[i] = Math.Abs(approx[i] - exact[i]);
+        }
+
+        Array.ForEach(error, Console.WriteLine);
+
+        var sum = error.Sum(t => t * t);
+
+        sum = Math.Sqrt(sum / _mesh.Points.Count);
+
+        Console.WriteLine($"rms = {sum}");
+    }
+
+    public void CalculateAtPoint(Point2D point)
+    {
+        
+    }
+
+    public static SolverFem.SolverFemBuilder CreateBuilder() => new();
 }

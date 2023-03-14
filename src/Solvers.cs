@@ -139,6 +139,8 @@ public class CGM : IterativeSolver
                 var beta = r * r / squareNorm;
                 z = r + beta * z;
             }
+            
+            var residual =  (_vector - (_matrix * _solution)).Norm();
 
             sw.Stop();
 
@@ -197,6 +199,8 @@ public class CGMCholesky : IterativeSolver
                 var beta = fstTemp * r / tmp;
                 z = fstTemp + beta * z;
             }
+            
+            var residual =  (_vector - (_matrix * _solution)).Norm() / vectorNorm;
 
             sw.Stop();
 

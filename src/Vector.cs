@@ -1,6 +1,6 @@
 ﻿namespace Project;
 
-public class Vector<T> : IEnumerable<T> where T : INumber<T>
+public class Vector<T> : IEnumerable<T> where T : INumber<T>, IRootFunctions<T>
 {
     private readonly T[] _storage;
     public int Length { get; }
@@ -79,7 +79,7 @@ public class Vector<T> : IEnumerable<T> where T : INumber<T>
         return newVector;
     }
 
-    public void Fill(double value)
+    public void Fill(T value)
     {
         for (int i = 0; i < Length; i++)
         {
@@ -87,28 +87,12 @@ public class Vector<T> : IEnumerable<T> where T : INumber<T>
         }
     }
 
-    public double Norm()
-    {
-        T result = T.Zero;
-
-        for (int i = 0; i < Length; i++)
-        {
-            result += _storage[i] * _storage[i];
-        }
-
-        return Math.Sqrt(Convert.ToDouble(result));
-    }
+    public T Norm() => T.Sqrt(_storage.Aggregate(T.Zero, (current, t) => current + t * t));
 
     public ImmutableArray<T> ToImmutableArray()
         => ImmutableArray.Create(_storage);
 
-    public IEnumerator<T> GetEnumerator()
-    {
-        foreach (T value in _storage)
-        {
-            yield return value;
-        }
-    }
+    public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)_storage).GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
