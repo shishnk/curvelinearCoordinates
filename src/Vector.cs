@@ -62,6 +62,18 @@ public class Vector<T> : IEnumerable<T> where T : INumber<T>, IRootFunctions<T>
         return result;
     }
 
+    public static Vector<T> operator -(Vector<T> vector)
+    {
+        var result = new Vector<T>(vector.Length);
+
+        for (int i = 0; i < vector.Length; i++)
+        {
+            result[i] = -T.One * vector[i];
+        }
+
+        return result;
+    }
+
     public static void Copy(Vector<T> source, Vector<T> destination)
     {
         for (int i = 0; i < source.Length; i++)

@@ -13,6 +13,7 @@ public abstract class BaseMatrixAssembler
     public Matrix StiffnessMatrix { get; }
     public Matrix MassMatrix { get; }
     public int BasisSize => _basis.Size;
+    public IBasis Basis => _basis;
 
     protected BaseMatrixAssembler(IBasis basis, Integration integrator, IBaseMesh mesh, bool useLinearFormFunc = false)
     {
@@ -197,8 +198,8 @@ public class CurveMatrixAssembler : BaseMatrixAssembler // maybe rename the clas
 
     private (double Determinant, Matrix Reverse) CalculateJacobian(int ielem, Point2D point)
     {
-        var dx = new double[2];
-        var dy = new double[2];
+        Span<double> dx = stackalloc double[2];
+        Span<double> dy = stackalloc double[2];
 
         var element = _mesh.Elements[ielem];
         var basis = _basis;

@@ -62,19 +62,19 @@ public class SolverFem
         _iterativeSolver.Compute();
 
         var exact = new double[_mesh.Points.Count];
-        
+
         for (int i = 0; i < exact.Length; i++)
         {
             exact[i] = _test.U(_mesh.Points[i]);
         }
-        
+
         var result = exact.Zip(_iterativeSolver.Solution!.Value, (v1, v2) => (v2, v1));
-        
+
         foreach (var (v1, v2) in result)
         {
             Console.WriteLine($"{v1} ------------ {v2} ");
         }
-        
+
         Console.WriteLine("---------------------------");
 
         // var exact = (from element in _mesh.Elements
@@ -253,10 +253,177 @@ public class SolverFem
         Console.WriteLine($"rms = {sum}");
     }
 
-    public void CalculateAtPoint(Point2D point)
+    public void DoResearch()
     {
-        
+        const int steps = 16;
+        const double angle = 2 * Math.PI / steps;
+
+        var pointsY = new List<double>();
+
+        for (int i = 0; i < steps + 1; i++)
+        {
+            pointsY.Add(angle * i);
+        }
+
+        Span<double> pointsX = stackalloc double[2] { 1.5, 2.5 };
+
+        var result = 0.0;
+
+        for (int i = 1; i < pointsX.Length; i++)
+        {
+            var hx = Math.Abs(pointsX[i] - pointsX[i - 1]);
+            var x = (pointsX[i - 1] + pointsX[i]) / 2.0;
+            var r = x;
+
+            for (int j = 1; j < pointsY.Count; j++)
+            {
+                var hy = Math.Abs(pointsY[j] - pointsY[j - 1]);
+                var y = (pointsY[j - 1] + pointsY[j]) / 2.0;
+
+                var area = Math.PI * pointsX[i] * pointsX[i] * hy / (2.0 * Math.PI) -
+                           Math.PI * pointsX[i - 1] * pointsX[i - 1] * hy / (2.0 * Math.PI);
+
+                x = r * Math.Cos(y);
+                y = r * Math.Sin(y);
+
+                // result += Math.Abs(_test.U((x, y)) - CalculateAtPoint((x, y))) * area;
+                result += area;
+            }
+        }
+
+        Console.WriteLine(result);
     }
+
+    public double CalculateAtPoint(Point2D point, bool printResult = false)
+    {
+        int ielem = FindNumberElement(point);
+
+        var element = _mesh.Elements[ielem];
+        var result = 0.0;
+
+        var newton = new Newton(_matrixAssembler.Basis, _mesh, point, ielem);
+        newton.Compute();
+
+        for (int i = 0; i < _matrixAssembler.BasisSize; i++)
+        {
+            result += _iterativeSolver.Solution!.Value[element.Nodes[i]] *
+                      _matrixAssembler.Basis.GetPsi(i, newton.Result);
+        }
+
+        if (printResult) Console.WriteLine($"Value at {point} = {result}");
+        return result;
+    }
+
+    private int FindNumberElement(Point2D point)
+    {
+        const double floatEps = 1E-07;
+        const double eps = 1E-05;
+
+        for (int ielem = 0; ielem < _mesh.Elements.Count; ielem++)
+        {
+            var element = _mesh.Elements[ielem];
+
+            var intersectionCounter = 0;
+
+            var edges = new List<(Point2D, Point2D)>
+            {
+                (_mesh.Points[element.Nodes[0]], _mesh.Points[element.Nodes[1]]),
+                (_mesh.Points[element.Nodes[1]], _mesh.Points[element.Nodes[2]]),
+                (_mesh.Points[element.Nodes[2]], _mesh.Points[element.Nodes[8]]),
+                (_mesh.Points[element.Nodes[8]], _mesh.Points[element.Nodes[7]]),
+                (_mesh.Points[element.Nodes[7]], _mesh.Points[element.Nodes[6]]),
+                (_mesh.Points[element.Nodes[6]], _mesh.Points[element.Nodes[0]])
+            };
+
+            foreach (var edge in edges)
+            {
+                if (OnEdge(edge)) return ielem;
+
+                var pt = point;
+                (Point2D A, Point2D B) sortedEdge = edge.Item1.Y > edge.Item2.Y ? (edge.Item2, edge.Item1) : edge;
+
+                if (Math.Abs(pt.Y - sortedEdge.A.Y) < floatEps || Math.Abs(pt.Y - sortedEdge.B.Y) < floatEps)
+                {
+                    pt = pt with { Y = pt.Y + eps };
+                }
+
+                var maxX = edge.Item1.X > edge.Item2.X ? edge.Item1.X : edge.Item2.X;
+                var minX = edge.Item1.X < edge.Item2.X ? edge.Item1.X : edge.Item2.X;
+
+                if (pt.Y > sortedEdge.B.Y || pt.Y < sortedEdge.A.Y || pt.X > maxX) continue;
+
+                if (pt.X < minX)
+                {
+                    intersectionCounter++;
+                }
+                else
+                {
+                    var mRed = Math.Abs(sortedEdge.A.X - sortedEdge.B.X) > uint.MinValue
+                        ? (sortedEdge.B.Y - sortedEdge.A.Y) / (sortedEdge.B.X - sortedEdge.A.X)
+                        : double.PositiveInfinity;
+                    var mBlue = Math.Abs(sortedEdge.A.X - pt.X) > uint.MinValue
+                        ? (pt.Y - sortedEdge.A.Y) / (pt.X - sortedEdge.A.X)
+                        : double.PositiveInfinity;
+
+                    if (mBlue >= mRed) intersectionCounter++;
+                }
+            }
+
+            if (intersectionCounter % 2 == 1) return ielem;
+
+            bool OnEdge((Point2D, Point2D) edge)
+            {
+                var distance1 = Math.Sqrt((point - edge.Item1) * (point - edge.Item1));
+                var distance2 = Math.Sqrt((point - edge.Item2) * (point - edge.Item2));
+                var edgeLenght = Math.Sqrt((edge.Item2 - edge.Item1) * (edge.Item2 - edge.Item1));
+
+                return Math.Abs(distance1 + distance2 - edgeLenght) < floatEps;
+            }
+        }
+
+        throw new("Not support exception!");
+    }
+
+    // private double CalculateElementArea(int ielem)
+    // {
+    // var element = _mesh.Elements[ielem];
+    //
+    // var side1 = Math.Sqrt((_mesh.Points[element.Nodes[8]] - _mesh.Points[element.Nodes[2]]) *
+    //                       (_mesh.Points[element.Nodes[8]] - _mesh.Points[element.Nodes[2]]));
+    // var side2 = Math.Sqrt((_mesh.Points[element.Nodes[6]] - _mesh.Points[element.Nodes[2]]) *
+    //                       (_mesh.Points[element.Nodes[6]] - _mesh.Points[element.Nodes[2]]));
+    // var side3 = Math.Sqrt((_mesh.Points[element.Nodes[8]] - _mesh.Points[element.Nodes[6]]) *
+    //                       (_mesh.Points[element.Nodes[8]] - _mesh.Points[element.Nodes[6]]));
+    //
+    // var semiperimeter = 1.0 / 2.0 * (side1 + side2 + side3);
+    // var triangleArea1 = Math.Sqrt(semiperimeter * (semiperimeter - side1) * (semiperimeter - side2) *
+    //                               (semiperimeter - side3));
+    //
+    // side1 = Math.Sqrt((_mesh.Points[element.Nodes[2]] - _mesh.Points[element.Nodes[0]]) *
+    //                   (_mesh.Points[element.Nodes[2]] - _mesh.Points[element.Nodes[0]]));
+    // side3 = Math.Sqrt((_mesh.Points[element.Nodes[6]] - _mesh.Points[element.Nodes[0]]) *
+    //                   (_mesh.Points[element.Nodes[6]] - _mesh.Points[element.Nodes[0]]));
+    //
+    // semiperimeter = 1.0 / 2.0 * (side1 + side2 + side3);
+    // var triangleArea2 = Math.Sqrt(semiperimeter * (semiperimeter - side1) * (semiperimeter - side2) *
+    //                               (semiperimeter - side3));
+    //
+    // return triangleArea1 + triangleArea2;
+
+    //     var element = _mesh.Elements[ielem];
+    //
+    //     var vert1 = _mesh.Points[element.Nodes[0]];
+    //     var vert2 = _mesh.Points[element.Nodes[1]];
+    //     var vert3 = _mesh.Points[element.Nodes[2]];
+    //     var vert4 = _mesh.Points[element.Nodes[8]];
+    //     var vert5 = _mesh.Points[element.Nodes[7]];
+    //     var vert6 = _mesh.Points[element.Nodes[6]];
+    //
+    //     return 1.0 / 2.0 * Math.Abs(vert1.X * vert2.Y + vert2.X * vert3.Y + vert3.X * vert4.Y +
+    //                                 vert4.X * vert5.Y + vert5.X * vert6.Y + vert6.X * vert1.Y -
+    //                                 vert2.X * vert1.Y - vert3.X * vert2.Y - vert4.X * vert3.Y -
+    //                                 vert5.X * vert4.Y - vert6.X * vert5.Y - vert1.X * vert6.Y);
+    // }
 
     public static SolverFem.SolverFemBuilder CreateBuilder() => new();
 }

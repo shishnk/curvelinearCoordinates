@@ -200,8 +200,6 @@ public class CGMCholesky : IterativeSolver
                 z = fstTemp + beta * z;
             }
             
-            var residual =  (_vector - (_matrix * _solution)).Norm() / vectorNorm;
-
             sw.Stop();
 
             _runningTime = sw.Elapsed;
