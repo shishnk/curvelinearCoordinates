@@ -6,7 +6,7 @@ var meshCreator = new RegularMeshCreator();
 var mesh = meshCreator.CreateMesh(meshParameters, new CurveQuadraticMeshBuilder());
 SolverFem problem = SolverFem.CreateBuilder()
     .SetMesh(mesh)
-    .SetTest(new Test1())
+    .SetTest(new Test3())
     .SetSolverSlae(new CGMCholesky(1000, 1E-16))
     .SetAssembler(new CurveMatrixAssembler(new QuadraticBasis(), new(Quadratures.SegmentGaussOrder5()), mesh,
         false))
@@ -14,4 +14,6 @@ SolverFem problem = SolverFem.CreateBuilder()
 
 problem.Compute();
 // problem.DoResearch();
-problem.CalculateAtPoint((-1.7, 0.3), true);
+// problem.CalculateAtPoint((0.12, 2.81), true);
+// problem.CalculateAtPoint((2.0, 0.1), true);
+problem.Integrate();

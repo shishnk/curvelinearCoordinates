@@ -4,21 +4,19 @@ public class Newton
 {
     private Vector<double> _vector;
     private Vector<double> _result;
-    private readonly Point2D _primaryPoint;
     private readonly Vector<double> _slaeResult;
     private readonly Matrix _jacobiMatrix;
     private readonly IBasis _basis;
     private readonly IBaseMesh _mesh;
-    private readonly int _ielem;
 
+    public int NumberElement { get; set; }
+    public Point2D Point { get; set; }
     public Point2D Result => (_result[0], _result[1]);
 
-    public Newton(IBasis basis, IBaseMesh mesh, Point2D primaryPoint, int ielem)
+    public Newton(IBasis basis, IBaseMesh mesh)
     {
         _mesh = mesh;
         _basis = basis;
-        _primaryPoint = primaryPoint;
-        _ielem = ielem;
         _jacobiMatrix = new(2);
         _slaeResult = new(2);
         _vector = new(2);
@@ -32,7 +30,7 @@ public class Newton
 
         CalculateEquationsValues();
 
-        var primaryNorm = _vector.Norm();
+        var primaryNorm = _vector.Norm() + 1E-30;
         var currentNorm = primaryNorm;
 
         for (int iter = 0; iter < maxIters && currentNorm / primaryNorm >= eps; iter++)
@@ -66,7 +64,7 @@ public class Newton
     {
         _vector.Fill(0.0);
 
-        var element = _mesh.Elements[_ielem];
+        var element = _mesh.Elements[NumberElement];
         Point2D point = (_result[0], _result[1]);
 
         for (int i = 0; i < _basis.Size; i++)
@@ -75,13 +73,13 @@ public class Newton
             _vector[1] += _basis.GetPsi(i, point) * _mesh.Points[element.Nodes[i]].Y;
         }
 
-        _vector[0] -= _primaryPoint.X;
-        _vector[1] -= _primaryPoint.Y;
+        _vector[0] -= Point.X;
+        _vector[1] -= Point.Y;
     }
 
     private void CalculateJacobiMatrix()
     {
-        var element = _mesh.Elements[_ielem];
+        var element = _mesh.Elements[NumberElement];
 
         Span<double> dx = stackalloc double[2];
         Span<double> dy = stackalloc double[2];
@@ -90,14 +88,14 @@ public class Newton
         {
             for (int k = 0; k < _jacobiMatrix.Size; k++)
             {
-                dx[k] += _basis.GetDPsi(i, k, _primaryPoint) * _mesh.Points[element.Nodes[i]].X;
-                dy[k] += _basis.GetDPsi(i, k, _primaryPoint) * _mesh.Points[element.Nodes[i]].Y;
+                dx[k] += _basis.GetDPsi(i, k, (_result[0], _result[1])) * _mesh.Points[element.Nodes[i]].X;
+                dy[k] += _basis.GetDPsi(i, k, (_result[0], _result[1])) * _mesh.Points[element.Nodes[i]].Y;
             }
         }
 
         _jacobiMatrix[0, 0] = dx[0];
-        _jacobiMatrix[0, 1] = dy[0];
-        _jacobiMatrix[1, 0] = dx[1];
+        _jacobiMatrix[0, 1] = -dy[0];
+        _jacobiMatrix[1, 0] = -dx[1];
         _jacobiMatrix[1, 1] = dy[1];
     }
 

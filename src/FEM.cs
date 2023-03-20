@@ -47,6 +47,7 @@ public class SolverFem
     private Vector<double> _localVector = default!;
     private Vector<double> _globalVector = default!;
     private BaseMatrixAssembler _matrixAssembler = default!;
+    private Newton? _newton;
 
     public void Compute()
     {
@@ -255,7 +256,7 @@ public class SolverFem
 
     public void DoResearch()
     {
-        const int steps = 16;
+        const int steps = 480;
         const double angle = 2 * Math.PI / steps;
 
         var pointsY = new List<double>();
@@ -271,7 +272,7 @@ public class SolverFem
 
         for (int i = 1; i < pointsX.Length; i++)
         {
-            var hx = Math.Abs(pointsX[i] - pointsX[i - 1]);
+            // var hx = Math.Abs(pointsX[i] - pointsX[i - 1]);
             var x = (pointsX[i - 1] + pointsX[i]) / 2.0;
             var r = x;
 
@@ -286,8 +287,8 @@ public class SolverFem
                 x = r * Math.Cos(y);
                 y = r * Math.Sin(y);
 
-                // result += Math.Abs(_test.U((x, y)) - CalculateAtPoint((x, y))) * area;
-                result += area;
+                result += Math.Abs(_test.U((x, y)) - CalculateAtPoint((x, y), true)) * area;
+                // result += area;
             }
         }
 
@@ -301,16 +302,33 @@ public class SolverFem
         var element = _mesh.Elements[ielem];
         var result = 0.0;
 
-        var newton = new Newton(_matrixAssembler.Basis, _mesh, point, ielem);
-        newton.Compute();
+        _newton ??= new(_matrixAssembler.Basis, _mesh);
+
+        _newton.Point = point;
+        _newton.NumberElement = ielem;
+
+        _newton.Compute();
 
         for (int i = 0; i < _matrixAssembler.BasisSize; i++)
         {
             result += _iterativeSolver.Solution!.Value[element.Nodes[i]] *
-                      _matrixAssembler.Basis.GetPsi(i, newton.Result);
+                      _matrixAssembler.Basis.GetPsi(i, _newton.Result);
         }
 
         if (printResult) Console.WriteLine($"Value at {point} = {result}");
+        return result;
+    }
+
+    private double CalculateAtPoint(Point2D point, FiniteElement element)
+    {
+        var result = 0.0;
+
+        for (int i = 0; i < _matrixAssembler.BasisSize; i++)
+        {
+            result += _iterativeSolver.Solution!.Value[element.Nodes[i]] *
+                      _matrixAssembler.Basis.GetPsi(i, point);
+        }
+
         return result;
     }
 
@@ -384,6 +402,35 @@ public class SolverFem
         throw new("Not support exception!");
     }
 
+    // private int FindNumberElement(Point2D point)
+    // {
+    //     var pt = new Point2D(Math.Sqrt(point.X * point.X + point.Y * point.Y), CalculateAtan(point.Y, point.X));
+    //
+    //     for (var ielem = 0; ielem < _mesh.Elements.Count; ielem++)
+    //     {
+    //         var element = _mesh.Elements[ielem];
+    //
+    //         Point2D vert1 = (Math.Sqrt(_mesh.Points[element.Nodes[0]].X * _mesh.Points[element.Nodes[0]].X +
+    //                                    _mesh.Points[element.Nodes[0]].Y * _mesh.Points[element.Nodes[0]].Y),
+    //             CalculateAtan(_mesh.Points[element.Nodes[0]].Y, _mesh.Points[element.Nodes[0]].X));
+    //         Point2D vert4 = (Math.Sqrt(_mesh.Points[element.Nodes[8]].X * _mesh.Points[element.Nodes[8]].X +
+    //                                    _mesh.Points[element.Nodes[8]].Y * _mesh.Points[element.Nodes[8]].Y),
+    //             CalculateAtan(_mesh.Points[element.Nodes[8]].Y, _mesh.Points[element.Nodes[8]].X));
+    //
+    //         if (pt.X >= vert4.X && pt.X <= vert1.X && pt.Y >= vert1.Y && pt.Y <= vert4.Y) return ielem;
+    //     }
+    //
+    //     double CalculateAtan(double y, double x)
+    //     {
+    //         
+    //         
+    //         var atan = Math.Atan2(y, x);
+    //         return atan % (2.0 * Math.PI);
+    //     }
+    //
+    //     throw new("Not support exception!");
+    // }
+
     // private double CalculateElementArea(int ielem)
     // {
     // var element = _mesh.Elements[ielem];
@@ -426,4 +473,102 @@ public class SolverFem
     // }
 
     public static SolverFem.SolverFemBuilder CreateBuilder() => new();
+
+    public double Integrate()
+    {
+        var result = 0.0;
+
+        foreach (var element in _mesh.Elements)
+        {
+            result += IntegrateElement(element);
+        }
+
+        Console.WriteLine(result);
+        return result;
+    }
+
+    private double IntegrateElement(FiniteElement element)
+    {
+        var k = 1;
+        var quadratures = Quadratures.SegmentGaussOrder5().Select(node => ((node.Node + 1.0) / 2.0, node.Weight / 2.0));
+        var lastResult = 0.0;
+        double result;
+
+        Span<double> dx = stackalloc double[2];
+        Span<double> dy = stackalloc double[2];
+
+        while (true)
+        {
+            var x = 0.0;
+            var h = 1.0 / k;
+            result = 0.0;
+
+            for (int i = 0; i < k; i++, x += h)
+            {
+                var y = 0.0;
+
+                for (int j = 0; j < k; j++, y += h)
+                {
+                    foreach (var qi in quadratures)
+                    {
+                        foreach (var qj in quadratures)
+                        {
+                            var point = (x + h * qi.Item1, y + h * qj.Item1);
+                            var x1 = 0.0;
+                            var y1 = 0.0;
+
+                            dx[0] = 0.0;
+                            dx[1] = 0.0;
+                            dy[0] = 0.0;
+                            dy[1] = 0.0;
+
+                            for (int c = 0; c < _matrixAssembler.BasisSize; c++)
+                            {
+                                x1 += _matrixAssembler.Basis.GetPsi(c, point) * _mesh.Points[element.Nodes[c]].X;
+                                y1 += _matrixAssembler.Basis.GetPsi(c, point) * _mesh.Points[element.Nodes[c]].Y;
+                            }
+
+                            for (int p = 0; p < _matrixAssembler.BasisSize; p++)
+                            {
+                                for (int r = 0; r < 2; r++)
+                                {
+                                    dx[r] += _matrixAssembler.Basis.GetDPsi(p, r, point) *
+                                             _mesh.Points[element.Nodes[p]].X;
+                                    dy[r] += _matrixAssembler.Basis.GetDPsi(p, r, point) *
+                                             _mesh.Points[element.Nodes[p]].Y;
+                                }
+                            }
+
+                            var determinant = dx[0] * dy[1] - dx[1] * dy[0];
+
+                            var pt = (x1, y1);
+
+                            result += Math.Abs(CalculateAtPoint(point, element) - _test.U(pt)) *
+                                      Math.Abs(determinant) * qi.Item2 *
+                                      qj.Item2 * h * h;
+                        }
+                    }
+                }
+            }
+
+            if (k != 1)
+            {
+                if (Math.Abs((result - lastResult) / result) < 1E-10)
+                {
+                    break;
+                }
+            }
+
+            k *= 2;
+
+            lastResult = result;
+
+            if (k == 32)
+            {
+                break;
+            }
+        }
+
+        return result;
+    }
 }
